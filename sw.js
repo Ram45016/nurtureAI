@@ -1,8 +1,9 @@
 
-const CACHE_NAME = 'nurture-ai-v2';
+const CACHE_NAME = 'nurture-ai-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
+  '/manifest.json',
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap'
 ];
@@ -10,7 +11,6 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Service Worker: Caching Assets');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
@@ -23,7 +23,6 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
-            console.log('Service Worker: Clearing Old Cache');
             return caches.delete(cache);
           }
         })
@@ -33,12 +32,13 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Strategy: Cache First, falling back to Network
+  if (event.request.method !== 'GET') return;
+  
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request).then((fetchRes) => {
-        // Cache external assets like DiceBear or Google Fonts as they are fetched
-        if (event.request.url.includes('api.dicebear.com') || event.request.url.includes('fonts.gstatic.com')) {
+        // Cache dynamic assets from dicebear or fonts
+        if (event.request.url.includes('dicebear') || event.request.url.includes('gstatic')) {
            return caches.open(CACHE_NAME).then((cache) => {
              cache.put(event.request.url, fetchRes.clone());
              return fetchRes;
@@ -47,7 +47,6 @@ self.addEventListener('fetch', (event) => {
         return fetchRes;
       });
     }).catch(() => {
-      // Return local index.html for navigation requests when offline
       if (event.request.mode === 'navigate') {
         return caches.match('/index.html');
       }

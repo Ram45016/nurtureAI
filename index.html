@@ -12,6 +12,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NurtureAI">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -24,14 +25,12 @@
         user-select: none;
         -webkit-user-select: none;
       }
-      /* Android-style safe areas */
       .safe-area-bottom {
         padding-bottom: env(safe-area-inset-bottom);
       }
       .custom-scrollbar::-webkit-scrollbar {
         width: 0px;
       }
-      /* Prevent scrolling on body when using bottom nav */
       .app-container {
         height: 100vh;
         display: flex;
@@ -40,7 +39,7 @@
       .scroll-container {
         flex: 1;
         overflow-y: auto;
-        padding-bottom: 80px; /* Space for bottom nav */
+        padding-bottom: 80px;
       }
     </style>
   <script type="importmap">
@@ -59,16 +58,25 @@
     <div id="root"></div>
     <script>
       let deferredPrompt;
+      
+      // Register Service Worker for Vercel deployment (Enables Offline & Install)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('SW registered'))
+            .catch(err => console.log('SW error', err));
+        });
+      }
+
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        // Trigger custom event to notify UI that app is installable
         window.dispatchEvent(new CustomEvent('pwa-installable', { detail: true }));
       });
 
       window.triggerInstall = async () => {
         if (!deferredPrompt) {
-          alert("To install NurtureAI:\n\n1. Tap the Share/Menu icon\n2. Select 'Add to Home Screen'");
+          alert("NurtureAI is ready! To install:\n\n1. Tap the Menu icon (three dots) in your browser\n2. Select 'Install App' or 'Add to Home Screen'");
           return;
         }
         deferredPrompt.prompt();
@@ -76,5 +84,6 @@
         deferredPrompt = null;
       };
     </script>
+    <script type="module" src="index.tsx"></script>
   </body>
 </html>
