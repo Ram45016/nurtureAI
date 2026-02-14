@@ -1,0 +1,26 @@
+
+{
+  "name": "NurtureAI: Smart Guardian",
+  "short_name": "NurtureAI",
+  "description": "AI-powered baby monitoring and parenting assistant.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "https://api.dicebear.com/7.x/avataaars/svg?seed=NurtureAI&backgroundColor=6366f1",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "https://api.dicebear.com/7.x/avataaars/svg?seed=NurtureAI&backgroundColor=6366f1",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "orientation": "portrait",
+  "categories": ["medical", "parenting"]
+}
