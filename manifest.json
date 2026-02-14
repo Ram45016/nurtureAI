@@ -1,9 +1,9 @@
 
 {
-  "name": "NurtureAI: Smart Guardian",
+  "name": "NurtureAI Smart Guardian",
   "short_name": "NurtureAI",
   "description": "AI-powered baby monitoring and parenting assistant.",
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#6366f1",

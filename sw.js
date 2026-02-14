@@ -1,6 +1,6 @@
 
-const CACHE_NAME = 'nurture-ai-v3';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'nurture-ai-v5';
+const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
@@ -11,7 +11,7 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(PRECACHE_ASSETS);
     })
   );
   self.skipWaiting();
@@ -33,18 +33,36 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  
+
+  const url = new URL(event.request.url);
+  const isLocal = url.origin === self.location.origin;
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((fetchRes) => {
-        // Cache dynamic assets from dicebear or fonts
-        if (event.request.url.includes('dicebear') || event.request.url.includes('gstatic')) {
-           return caches.open(CACHE_NAME).then((cache) => {
-             cache.put(event.request.url, fetchRes.clone());
-             return fetchRes;
-           });
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        // Return cached, but update in background for local files
+        if (isLocal) {
+          fetch(event.request).then((networkResponse) => {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+          });
         }
-        return fetchRes;
+        return cachedResponse;
+      }
+
+      return fetch(event.request).then((networkResponse) => {
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
+        }
+
+        // Cache local source files and dynamic assets (icons, fonts)
+        if (isLocal || url.hostname.includes('dicebear') || url.hostname.includes('gstatic')) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+
+        return networkResponse;
       });
     }).catch(() => {
       if (event.request.mode === 'navigate') {
