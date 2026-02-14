@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Child, ActivityEvent, LiveStats, GrowthData, WaterEntry, FoodEntry, SmartAlarm } from '../types';
 import { generateProactiveRecommendations } from '../services/gemini';
-import { calculateAge, getHydrationGoal, getExpectedWeightRange, getExpectedHeightRange } from '../utils/age';
+import { calculateAge, getHydrationGoal, getExpectedWeightRange, getExpectedHeightRange, getRecommendedMealFrequency } from '../utils/age';
 
 interface DashboardProps {
   child: Child;
@@ -17,21 +17,25 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthData, waterEntries, foodEntries, onSetAlarm }) => {
   const [aiRec, setAiRec] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
-
-  useEffect(() => {
-    setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone);
-  }, []);
 
   const age = calculateAge(child.birthDate);
-  const hydrationGoal = getHydrationGoal(age.decimal || age.years);
-  const expWeight = getExpectedWeightRange(age.decimal || age.years, child.gender);
+  const decimalAge = age.decimal || age.years;
 
-  const dailyWater = waterEntries
+  // Comparison Calculations
+  const weightRange = getExpectedWeightRange(decimalAge, child.gender);
+  const heightRange = getExpectedHeightRange(decimalAge, child.gender);
+  const waterGoal = getHydrationGoal(decimalAge);
+  const foodGoal = getRecommendedMealFrequency(decimalAge);
+
+  const currentWeight = growthData[0]?.weight || child.weightKg;
+  const currentHeight = growthData[0]?.height || (decimalAge < 0.5 ? 50 : 70); // Fallback estimate
+
+  const todayWater = waterEntries
     .filter(e => new Date(e.timestamp).toDateString() === new Date().toDateString())
-    .reduce((a, b) => a + b.amountMl, 0);
+    .reduce((sum, e) => sum + e.amountMl, 0);
 
-  const waterProgress = Math.min(100, (dailyWater / hydrationGoal) * 100);
+  const todayMeals = foodEntries
+    .filter(e => new Date(e.timestamp).toDateString() === new Date().toDateString()).length;
 
   useEffect(() => {
     const fetchRec = async () => {
@@ -42,164 +46,145 @@ const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthD
         const res = await generateProactiveRecommendations(child.name, age.display, lastMeal, lastWater, null);
         setAiRec(res);
       } catch (e) { 
-        console.error("AI Insight Error:", e); 
+        console.error(e); 
       } finally { 
         setLoading(false); 
       }
     };
     fetchRec();
-  }, [events.length, dailyWater, child.name, age.display]);
+  }, [events.length, todayWater, child.name, age.display]);
 
-  const handleDownloadClick = () => {
-    if ((window as any).triggerInstall) {
-      (window as any).triggerInstall();
-    } else if (isStandalone) {
-      window.location.reload();
-    }
-  };
+  const ComparisonBar = ({ label, actual, min, max, unit, icon }: any) => {
+    const isNormal = actual >= min && actual <= max;
+    const progress = Math.min(100, (actual / max) * 100);
+    const minMarker = (min / max) * 100;
 
-  const handleSmartAlarm = () => {
-    onSetAlarm('routine', 15, 'Gemini Smart Check-in');
+    return (
+      <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm space-y-3">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{icon}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</span>
+          </div>
+          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${isNormal ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+            {actual < min ? 'Low' : actual > max ? 'High' : 'Normal'}
+          </span>
+        </div>
+        <div className="flex items-end justify-between">
+          <p className="text-2xl font-black text-slate-800">{actual}<span className="text-xs text-slate-300 ml-1">{unit}</span></p>
+          <p className="text-[10px] font-bold text-slate-400">Target: {min}-{max}{unit}</p>
+        </div>
+        <div className="h-2 bg-slate-50 rounded-full relative overflow-hidden">
+          <div className="absolute inset-0 bg-slate-100/50"></div>
+          <div 
+            className={`h-full rounded-full transition-all duration-1000 ${isNormal ? 'bg-indigo-500' : 'bg-amber-500'}`}
+            style={{ width: `${progress}%` }}
+          />
+          <div className="absolute top-0 bottom-0 w-0.5 bg-indigo-200" style={{ left: `${minMarker}%` }} />
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Installation Banner */}
-      <div className={`${isStandalone ? 'bg-indigo-900' : 'bg-slate-900'} rounded-[2rem] p-6 text-white shadow-2xl flex items-center justify-between border border-white/10 group active:scale-[0.98] transition-all cursor-pointer`} onClick={handleDownloadClick}>
-        <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 ${isStandalone ? 'bg-emerald-600' : 'bg-indigo-600'} rounded-2xl flex items-center justify-center text-2xl shadow-lg`}>
-            {isStandalone ? '🔄' : '📲'}
+    <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header Comparison Pulse */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Growth Hub</h2>
+          <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase">WHO Standards</span>
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+          <ComparisonBar label="Weight" actual={currentWeight} min={weightRange.min} max={weightRange.max} unit="kg" icon="⚖️" />
+          <ComparisonBar label="Height" actual={currentHeight} min={heightRange.min} max={heightRange.max} unit="cm" icon="📏" />
+        </div>
+      </section>
+
+      {/* Intake Comparison */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Daily Intake</h2>
+          <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase">Goal Tracking</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          {/* Water Intake Card */}
+          <div className="bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-center text-center space-y-3">
+             <div className="relative w-20 h-20">
+               <svg className="w-full h-full transform -rotate-90">
+                 <circle cx="40" cy="40" r="36" fill="transparent" stroke="#f1f5f9" strokeWidth="8" />
+                 <circle 
+                   cx="40" cy="40" r="36" fill="transparent" stroke="#3b82f6" strokeWidth="8" 
+                   strokeDasharray={226.2} strokeDashoffset={226.2 - (226.2 * Math.min(100, (todayWater/waterGoal)*100)) / 100} 
+                   strokeLinecap="round" className="transition-all duration-1000" 
+                 />
+               </svg>
+               <div className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-slate-800">
+                 {Math.round((todayWater/waterGoal)*100)}%
+               </div>
+             </div>
+             <div>
+               <p className="text-[10px] font-black uppercase text-slate-400">Hydration</p>
+               <p className="font-black text-slate-800">{todayWater}ml</p>
+               <p className="text-[9px] font-bold text-slate-300">Target {waterGoal}ml</p>
+             </div>
           </div>
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-indigo-400">
-              {isStandalone ? 'System Maintenance' : 'Android Integration'}
-            </p>
-            <h4 className="text-lg font-bold">
-              {isStandalone ? 'App Update Check' : 'Download NurtureAI APK'}
-            </h4>
-            <p className="text-[10px] text-slate-400 font-bold leading-none">
-              {isStandalone ? 'v1.0.4 Verified' : 'Install for background alerts'}
-            </p>
+
+          {/* Food Intake Card */}
+          <div className="bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-center text-center space-y-3">
+             <div className="relative w-20 h-20">
+               <svg className="w-full h-full transform -rotate-90">
+                 <circle cx="40" cy="40" r="36" fill="transparent" stroke="#f1f5f9" strokeWidth="8" />
+                 <circle 
+                   cx="40" cy="40" r="36" fill="transparent" stroke="#f59e0b" strokeWidth="8" 
+                   strokeDasharray={226.2} strokeDashoffset={226.2 - (226.2 * Math.min(100, (todayMeals/foodGoal)*100)) / 100} 
+                   strokeLinecap="round" className="transition-all duration-1000" 
+                 />
+               </svg>
+               <div className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-slate-800">
+                 {Math.round((todayMeals/foodGoal)*100)}%
+               </div>
+             </div>
+             <div>
+               <p className="text-[10px] font-black uppercase text-slate-400">Meals</p>
+               <p className="font-black text-slate-800">{todayMeals} entries</p>
+               <p className="text-[9px] font-bold text-slate-300">Target {foodGoal}/day</p>
+             </div>
           </div>
         </div>
-        <button className={`bg-white ${isStandalone ? 'text-indigo-900' : 'text-slate-900'} px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest`}>
-          {isStandalone ? 'Update' : 'Install'}
-        </button>
-      </div>
+      </section>
 
-      {/* AI Expert Insight */}
-      <div className="bg-indigo-600 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 group-hover:scale-110 transition-transform"></div>
+      {/* AI Smart Insight */}
+      <div className="bg-indigo-600 rounded-[2.5rem] p-6 text-white shadow-xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8"></div>
         <div className="relative z-10 space-y-4">
            <div className="flex items-center justify-between">
              <div className="flex items-center gap-2">
                <span className="w-2 h-2 bg-indigo-300 rounded-full animate-pulse"></span>
-               <p className="text-[10px] font-black text-indigo-100 uppercase tracking-widest">Expert Intelligence</p>
+               <p className="text-[10px] font-black text-indigo-100 uppercase tracking-widest">NurtureAI Analysis</p>
              </div>
-             <span className="text-[9px] font-black text-indigo-700 bg-white/90 px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">Gemini ✨</span>
+             <span className="text-[8px] font-black text-indigo-700 bg-white/90 px-2 py-1 rounded-full uppercase tracking-widest">Gemini ✨</span>
            </div>
            
            <div className="min-h-[60px]">
              {loading ? (
-               <div className="flex gap-2 py-4">
+               <div className="flex gap-2 py-3">
                  {[0, 1, 2].map(i => (
                    <div key={i} className="w-2 h-2 bg-white/50 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.2}s` }}></div>
                  ))}
                </div>
              ) : (
-               <p className="text-xl font-bold leading-tight tracking-tight drop-shadow-sm">{aiRec || "Gemini is analyzing your child's data..."}</p>
+               <p className="text-xl font-bold leading-tight tracking-tight">{aiRec || "Collecting latest growth data..."}</p>
              )}
            </div>
 
            <button 
-             onClick={handleSmartAlarm}
-             className="bg-white/20 hover:bg-white/30 active:scale-95 transition-all text-white text-[10px] font-black uppercase tracking-widest px-6 py-3 rounded-xl border border-white/20 backdrop-blur-sm"
+             onClick={() => onSetAlarm('routine', 15, 'Gemini Smart Check-in')}
+             className="w-full bg-white/20 hover:bg-white/30 transition-all text-white text-[10px] font-black uppercase tracking-widest py-3 rounded-2xl border border-white/20 backdrop-blur-sm"
            >
-             Set Gemini Alarm ⏰
+             Set Suggested Action ⏰
            </button>
         </div>
       </div>
-
-      {/* Comparisons Row */}
-      <div className="grid grid-cols-1 gap-4">
-        {/* Hydration Pulse */}
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center justify-between group active:bg-slate-50 transition-colors">
-           <div className="space-y-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hydration Tracker</p>
-              <h3 className="text-2xl font-black text-slate-800">{dailyWater} <span className="text-sm text-slate-400 font-bold">/ {hydrationGoal}ml</span></h3>
-              <p className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full inline-block">Comparison vs Daily Target</p>
-           </div>
-           <div className="relative w-16 h-16">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle cx="32" cy="32" r="28" fill="transparent" stroke="#f1f5f9" strokeWidth="6" />
-                <circle cx="32" cy="32" r="28" fill="transparent" stroke="#3b82f6" strokeWidth="6" strokeDasharray={175.9} strokeDashoffset={175.9 - (175.9 * waterProgress) / 100} strokeLinecap="round" className="transition-all duration-1000" />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-slate-800">{Math.round(waterProgress)}%</div>
-           </div>
-        </div>
-
-        {/* Growth Pulse */}
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm space-y-4">
-          <div className="flex justify-between items-center">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Development Pulse</p>
-            <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase">WHO Standard Map</span>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-               <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Weight vs Target</p>
-               <p className="text-xl font-black text-slate-800">{growthData[0]?.weight || child.weightKg}kg</p>
-               <p className="text-[9px] font-bold text-slate-400">Standard: {expWeight.min}-{expWeight.max}kg</p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-               <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Height vs Target</p>
-               <p className="text-xl font-black text-slate-800">{growthData[0]?.height || '---'}cm</p>
-               <p className="text-[9px] font-bold text-slate-400">Standard for {age.years}y</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Vital Stats */}
-      <div className="grid grid-cols-2 gap-4">
-         <div className="bg-emerald-50 p-6 rounded-[2rem] border border-emerald-100 space-y-1 group active:bg-emerald-100 transition-colors">
-            <div className="flex items-center gap-1">
-              <span className="text-xs group-hover:scale-125 transition-transform">💓</span>
-              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Heart Rate</p>
-            </div>
-            <p className="text-2xl font-black text-emerald-900">{liveStats.heartRate} <span className="text-[10px] font-bold opacity-40 uppercase">bpm</span></p>
-         </div>
-         <div className="bg-amber-50 p-6 rounded-[2rem] border border-amber-100 space-y-1 group active:bg-amber-100 transition-colors">
-            <div className="flex items-center gap-1">
-              <span className="text-xs group-hover:scale-125 transition-transform">🌡️</span>
-              <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Room Temp</p>
-            </div>
-            <p className="text-2xl font-black text-amber-900">{liveStats.temperature}°C</p>
-         </div>
-      </div>
-
-      <section className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Latest Events</h3>
-        <div className="space-y-4">
-          {events.length === 0 ? (
-            <p className="text-slate-400 text-xs font-bold text-center py-4 italic">No recent events detected.</p>
-          ) : (
-            events.slice(0, 3).map(event => (
-              <div key={event.id} className="flex gap-4 items-center p-2 rounded-xl hover:bg-slate-50 transition-colors">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${
-                  event.type === 'cry' ? 'bg-rose-50 text-rose-500' : 
-                  event.type === 'feeding' ? 'bg-amber-50 text-amber-500' : 'bg-slate-50 text-slate-500'
-                }`}>
-                  {event.type === 'cry' ? '📢' : event.type === 'feeding' ? '🥣' : '✨'}
-                </div>
-                <div>
-                  <p className="text-sm font-black text-slate-700 leading-none mb-1">{event.description}</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{new Date(event.timestamp).toLocaleTimeString()}</p>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
     </div>
   );
 };

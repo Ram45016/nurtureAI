@@ -30,9 +30,18 @@ const AIAssistant: React.FC<{ child: Child }> = ({ child }) => {
       const now = new Date();
       const ageYears = now.getFullYear() - birthDate.getFullYear();
       const response = await getParentingAdvice(userMsg, `${ageYears} years old`);
-      setMessages(prev => [...prev, { role: 'ai', text: response || "Gemini is busy dreaming. Please try again." }]);
-    } catch (err) {
-      setMessages(prev => [...prev, { role: 'ai', text: "Connection to Gemini intelligence lost. Check your network." }]);
+      
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        text: response || "Gemini is busy dreaming. Please try again." 
+      }]);
+    } catch (err: any) {
+      console.error("Chat Message Error:", err);
+      const errorMsg = err.message?.includes("API_KEY") 
+        ? "Configuration Error: The Gemini API Key is missing. Please add API_KEY to your Vercel Environment Variables."
+        : "Gemini Intelligence is currently unavailable. Please check your network connection or verify your API configuration.";
+      
+      setMessages(prev => [...prev, { role: 'ai', text: errorMsg }]);
     } finally {
       setLoading(false);
     }

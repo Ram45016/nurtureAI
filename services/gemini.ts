@@ -1,17 +1,21 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-
+const getAI = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.warn("NurtureAI: API_KEY is missing from environment variables.");
+  }
+  return new GoogleGenAI({ apiKey: apiKey || "" });
+};
 
 /**
  * GEMINI TEXT REASONING ENGINE
  * Optimized for high-fidelity pediatric advice and reasoning.
  */
 const callGemini = async (prompt: string, model: string = 'gemini-3-flash-preview', systemInstruction: string = "You are a helpful assistant.") => {
-  const ai = getAI();
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: model,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -21,9 +25,15 @@ const callGemini = async (prompt: string, model: string = 'gemini-3-flash-previe
       },
     });
     return response.text || "";
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    return "The Gemini brain is currently processing. Please try again shortly.";
+  } catch (error: any) {
+    console.error("Gemini API Error Detail:", error);
+    if (error.message?.includes("API key not valid")) {
+      return "ERROR: The provided Gemini API Key is invalid. Please check your Vercel Environment Variables.";
+    }
+    if (error.message?.includes("User location is not supported")) {
+      return "ERROR: Gemini is not yet available in your current region.";
+    }
+    return "The Gemini brain is currently processing. Please check your network and API configuration on Vercel.";
   }
 };
 
@@ -70,31 +80,36 @@ export const getParentingAdvice = async (query: string, childAge: string) => {
  * MULTIMODAL: Acoustic Signature Analysis
  */
 export const analyzeAudioBuffer = async (audioBase64: string, mimeType: string = 'audio/webm') => {
-  const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: {
-      parts: [
-        { inlineData: { data: audioBase64, mimeType: mimeType } },
-        { text: "Analyze the audio signature. Identify if it's a cry (and why) or laughter. Return JSON only." }
-      ]
-    },
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          detectedActivity: { type: Type.STRING },
-          confidence: { type: Type.NUMBER },
-          isAlert: { type: Type.BOOLEAN },
-          details: { type: Type.STRING },
-          actionableAdvice: { type: Type.STRING }
-        },
-        required: ["detectedActivity", "confidence", "isAlert", "details", "actionableAdvice"]
+  try {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [
+          { inlineData: { data: audioBase64, mimeType: mimeType } },
+          { text: "Analyze the audio signature. Identify if it's a cry (and why) or laughter. Return JSON only." }
+        ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            detectedActivity: { type: Type.STRING },
+            confidence: { type: Type.NUMBER },
+            isAlert: { type: Type.BOOLEAN },
+            details: { type: Type.STRING },
+            actionableAdvice: { type: Type.STRING }
+          },
+          required: ["detectedActivity", "confidence", "isAlert", "details", "actionableAdvice"]
+        }
       }
-    }
-  });
-  return JSON.parse(response.text || '{}');
+    });
+    return JSON.parse(response.text || '{}');
+  } catch (err) {
+    console.error("Audio Analysis Error:", err);
+    throw err;
+  }
 };
 
 /**
