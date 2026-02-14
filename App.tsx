@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { AppView, Child, ActivityEvent, LiveStats, GrowthData, FoodEntry, Vaccination, DoctorVisit, WaterEntry } from './types';
+import { AppView, Child, ActivityEvent, LiveStats, GrowthData, FoodEntry, Vaccination, DoctorVisit, WaterEntry, SmartAlarm } from './types';
 import Dashboard from './components/Dashboard';
 import Monitor from './components/Monitor';
 import GrowthTracker from './components/GrowthTracker';
@@ -8,14 +8,15 @@ import AIStoryTime from './components/AIStoryTime';
 import AIAssistant from './components/AIAssistant';
 import DietTracker from './components/DietTracker';
 import HealthLog from './components/HealthLog';
-import HydrationTracker from './components/HydrationTracker';
+import Reminders from './components/Reminders';
 import Onboarding from './components/Onboarding';
 import ChildProfileModal from './components/ChildProfileModal';
+// Added HydrationTracker import
+import HydrationTracker from './components/HydrationTracker';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<AppView>(AppView.DASHBOARD);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [editingChild, setEditingChild] = useState<Child | null>(null);
   
   // Data Persistence
   const [children, setChildren] = useState<Child[]>(() => {
@@ -29,6 +30,13 @@ const App: React.FC = () => {
     localStorage.getItem('nurture_selected_child')
   );
   
+  const [alarms, setAlarms] = useState<SmartAlarm[]>(() => {
+    try {
+      const saved = localStorage.getItem('nurture_alarms');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
   const [events, setEvents] = useState<ActivityEvent[]>(() => {
     try {
       const saved = localStorage.getItem('nurture_events');
@@ -87,8 +95,23 @@ const App: React.FC = () => {
     localStorage.setItem('nurture_vaccines', JSON.stringify(vaccines));
     localStorage.setItem('nurture_visits', JSON.stringify(doctorVisits));
     localStorage.setItem('nurture_water', JSON.stringify(waterEntries));
+    localStorage.setItem('nurture_alarms', JSON.stringify(alarms));
     if (selectedChildId) localStorage.setItem('nurture_selected_child', selectedChildId);
-  }, [children, events, growthData, foodEntries, vaccines, doctorVisits, waterEntries, selectedChildId]);
+  }, [children, events, growthData, foodEntries, vaccines, doctorVisits, waterEntries, alarms, selectedChildId]);
+
+  // Alarm Check Logic
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const triggering = alarms.find(a => a.isActive && a.time <= now);
+      if (triggering) {
+        if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
+        alert(`⏰ SMART REMINDER: ${triggering.label}`);
+        setAlarms(prev => prev.map(a => a.id === triggering.id ? { ...a, isActive: false } : a));
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [alarms]);
 
   const selectedChild = useMemo(() => {
     const found = children.find(c => c.id === selectedChildId);
@@ -103,8 +126,19 @@ const App: React.FC = () => {
       id: Math.random().toString(36).substr(2, 9)
     } as T;
     setter(prev => [newItem, ...prev]);
-    // Trigger vibration for new entries on Android
     if (navigator.vibrate) navigator.vibrate(50);
+  };
+
+  const handleAddAlarm = (type: SmartAlarm['type'], delayMinutes: number, label: string) => {
+    const newAlarm: SmartAlarm = {
+      id: Math.random().toString(36).substr(2, 9),
+      type,
+      time: Date.now() + (delayMinutes * 60 * 1000),
+      label,
+      isActive: true
+    };
+    setAlarms(prev => [newAlarm, ...prev]);
+    if (navigator.vibrate) navigator.vibrate([50, 50]);
   };
 
   if (children.length === 0) return <Onboarding onComplete={(c) => setChildren([c])} />;
@@ -114,52 +148,53 @@ const App: React.FC = () => {
     const props = { child: selectedChild };
     
     switch (activeView) {
-      case AppView.DASHBOARD: return <Dashboard {...props} events={events} liveStats={liveStats} growthData={growthData} waterEntries={waterEntries} foodEntries={foodEntries} />;
+      case AppView.DASHBOARD: return <Dashboard {...props} events={events} liveStats={liveStats} growthData={growthData} waterEntries={waterEntries} foodEntries={foodEntries} onSetAlarm={handleAddAlarm} />;
       case AppView.MONITOR: return <Monitor {...props} liveStats={liveStats} onNewEvent={(e) => addLog(setEvents, e)} />;
       case AppView.TRACKER: return <GrowthTracker {...props} growthData={growthData} onAddEntry={(e) => addLog(setGrowthData, e)} />;
       case AppView.DIET: return <DietTracker {...props} entries={foodEntries} onAddEntry={(e) => addLog(setFoodEntries, e)} />;
       case AppView.HEALTH: return <HealthLog {...props} vaccines={vaccines} visits={doctorVisits} onAddVaccine={(e) => addLog(setVaccines, e)} onAddVisit={(e) => addLog(setDoctorVisits, e)} />;
-      case AppView.HYDRATION: return <HydrationTracker {...props} entries={waterEntries} onAddEntry={(e) => addLog(setWaterEntries, e)} />;
+      case AppView.REMINDERS: return <Reminders {...props} alarms={alarms} onSetAlarm={handleAddAlarm} onRemoveAlarm={(id) => setAlarms(prev => prev.filter(a => a.id !== id))} />;
       case AppView.STORYTIME: return <AIStoryTime {...props} />;
       case AppView.ASSISTANT: return <AIAssistant {...props} />;
-      default: return <Dashboard {...props} events={events} liveStats={liveStats} growthData={growthData} waterEntries={waterEntries} foodEntries={foodEntries} />;
+      // Added case for HYDRATION view
+      case AppView.HYDRATION: return <HydrationTracker {...props} entries={waterEntries} onAddEntry={(e) => addLog(setWaterEntries, e)} />;
+      default: return <Dashboard {...props} events={events} liveStats={liveStats} growthData={growthData} waterEntries={waterEntries} foodEntries={foodEntries} onSetAlarm={handleAddAlarm} />;
     }
   };
 
   const navItems = [
     { view: AppView.DASHBOARD, label: 'Home', icon: '🏠' },
     { view: AppView.MONITOR, label: 'Monitor', icon: '🎙️' },
-    { view: AppView.DIET, label: 'Diet', icon: '🍎' },
-    { view: AppView.ASSISTANT, label: 'AI Support', icon: '✨' },
-    { view: AppView.HEALTH, label: 'Health', icon: '🏥' },
+    { view: AppView.REMINDERS, label: 'Reminders', icon: '⏰' },
+    { view: AppView.ASSISTANT, label: 'Expert', icon: '✨' },
+    { view: AppView.DIET, label: 'Nutrition', icon: '🍎' },
+    // Added Hydration to main navigation
+    { view: AppView.HYDRATION, label: 'Water', icon: '💧' },
   ];
 
   return (
-    <div className="app-container">
-      {/* Top App Bar */}
-      <header className="px-6 py-4 bg-white border-b border-slate-100 flex justify-between items-center shrink-0">
+    <div className="app-container bg-slate-50">
+      <header className="px-6 py-4 bg-white border-b border-slate-100 flex justify-between items-center shrink-0 safe-area-top">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm">🍼</div>
-          <span className="font-bold text-lg text-slate-800">NurtureAI</span>
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm shadow-md">🍼</div>
+          <span className="font-bold text-lg text-slate-800 tracking-tight">NurtureAI</span>
         </div>
         <button 
           onClick={() => setIsProfileModalOpen(true)}
-          className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100"
+          className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200 active:scale-95 transition-transform"
         >
           <img src={selectedChild?.avatar} className="w-6 h-6 rounded-full" />
-          <span className="text-xs font-bold text-slate-600">{selectedChild?.name}</span>
+          <span className="text-xs font-bold text-slate-700">{selectedChild?.name}</span>
         </button>
       </header>
 
-      {/* Main Scrollable Content */}
       <div className="scroll-container custom-scrollbar">
-        <div className="p-4 md:p-8 max-w-lg mx-auto md:max-w-7xl">
+        <div className="p-4 max-w-lg mx-auto md:max-w-4xl">
           {renderView()}
         </div>
       </div>
 
-      {/* Android Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex justify-around items-center px-2 py-3 safe-area-bottom z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 flex justify-around items-center px-2 py-2 safe-area-bottom z-50 shadow-2xl">
         {navItems.map(item => (
           <button
             key={item.view}
@@ -167,12 +202,14 @@ const App: React.FC = () => {
               setActiveView(item.view);
               if (navigator.vibrate) navigator.vibrate(10);
             }}
-            className={`flex flex-col items-center gap-1 min-w-[64px] transition-all ${activeView === item.view ? 'text-indigo-600' : 'text-slate-400'}`}
+            className="flex flex-col items-center gap-1 min-w-[60px] md:min-w-[72px] transition-all relative py-2"
           >
-            <div className={`w-12 h-8 rounded-full flex items-center justify-center transition-all ${activeView === item.view ? 'bg-indigo-50' : 'bg-transparent'}`}>
-              <span className="text-xl">{item.icon}</span>
+            <div className={`w-14 h-8 rounded-full flex items-center justify-center transition-all ${activeView === item.view ? 'bg-indigo-100' : 'bg-transparent'}`}>
+              <span className={`text-xl ${activeView === item.view ? 'text-indigo-700' : 'text-slate-500'}`}>{item.icon}</span>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-tighter">{item.label}</span>
+            <span className={`text-[10px] font-bold uppercase tracking-tighter ${activeView === item.view ? 'text-indigo-700' : 'text-slate-400'}`}>
+              {item.label}
+            </span>
           </button>
         ))}
       </nav>
@@ -180,7 +217,17 @@ const App: React.FC = () => {
       <ChildProfileModal 
         isOpen={isProfileModalOpen} 
         onClose={() => setIsProfileModalOpen(false)} 
-        onSave={(c) => { setChildren([c]); setSelectedChildId(c.id); }}
+        onSave={(c) => { 
+          const existing = children.findIndex(child => child.id === c.id);
+          if (existing > -1) {
+            const updated = [...children];
+            updated[existing] = c;
+            setChildren(updated);
+          } else {
+            setChildren([...children, c]);
+          }
+          setSelectedChildId(c.id);
+        }}
         editingChild={selectedChild}
       />
     </div>

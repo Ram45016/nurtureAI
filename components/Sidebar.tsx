@@ -14,11 +14,27 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenList, selectedChild, setSelectedChild, onAddChild, onEditChild }) => {
   const [isInstallable, setIsInstallable] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    const handleInstallable = (e: any) => setIsInstallable(true);
+    // Check if already running as standalone APK
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+      setIsStandalone(true);
+    }
+
+    const handleInstallable = (e: any) => setIsInstallable(e.detail);
+    const handleInstalled = () => {
+      setIsStandalone(true);
+      setIsInstallable(false);
+    };
+
     window.addEventListener('pwa-installable', handleInstallable);
-    return () => window.removeEventListener('pwa-installable', handleInstallable);
+    window.addEventListener('pwa-installed', handleInstalled);
+    
+    return () => {
+      window.removeEventListener('pwa-installable', handleInstallable);
+      window.removeEventListener('pwa-installed', handleInstalled);
+    };
   }, []);
 
   const navItems = [
@@ -35,8 +51,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenLi
   const handleInstall = () => {
     if ((window as any).triggerInstall) {
       (window as any).triggerInstall();
-    } else {
-      alert("To install NurtureAI:\n\n1. Tap the Share icon (iOS) or Menu icon (Android)\n2. Select 'Add to Home Screen'");
     }
   };
 
@@ -107,20 +121,34 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenLi
       <div className="p-4 border-t border-slate-100 bg-slate-50/50">
         <div className="bg-white p-5 rounded-[1.5rem] border border-slate-200 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 text-lg">
-              📱
+            <div className={`w-8 h-8 ${isStandalone ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-indigo-600'} rounded-lg flex items-center justify-center text-lg`}>
+              {isStandalone ? '🛡️' : '📲'}
             </div>
             <div>
-              <p className="text-[11px] font-black text-slate-800 uppercase tracking-tighter">Native App</p>
-              <p className="text-[9px] text-slate-400 font-bold">Standalone APK Mode</p>
+              <p className="text-[11px] font-black text-slate-800 uppercase tracking-tighter">
+                {isStandalone ? 'Native Active' : 'Native Integration'}
+              </p>
+              <p className="text-[9px] text-slate-400 font-bold">
+                {isStandalone ? 'Vercel Deployment' : 'Install as Android APK'}
+              </p>
             </div>
           </div>
-          <button 
-            onClick={handleInstall}
-            className="w-full py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2"
-          >
-            {isInstallable ? '📥 Install APK' : '📲 Download App'}
-          </button>
+          
+          {!isStandalone && (
+            <button 
+              onClick={handleInstall}
+              className={`w-full py-3 ${isInstallable ? 'bg-indigo-600 animate-pulse' : 'bg-slate-900'} text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2`}
+            >
+              {isInstallable ? '📥 Install APK Now' : '🔄 Check Compatibility'}
+            </button>
+          )}
+
+          {isStandalone && (
+            <div className="flex items-center gap-1 mt-2 text-[9px] font-bold text-emerald-600 uppercase tracking-widest">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+              WebAPK Verified
+            </div>
+          )}
         </div>
       </div>
     </aside>

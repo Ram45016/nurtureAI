@@ -24,6 +24,14 @@ export interface FoodEntry {
   calories?: number;
 }
 
+export interface SmartAlarm {
+  id: string;
+  type: 'meal' | 'water' | 'health' | 'routine';
+  time: number;
+  label: string;
+  isActive: boolean;
+}
+
 export interface Vaccination {
   id: string;
   name: string;
@@ -61,13 +69,15 @@ export interface LiveStats {
   isBreathingRegular: boolean;
 }
 
+// Added HYDRATION to resolve compilation error in Sidebar.tsx
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   MONITOR = 'MONITOR',
   TRACKER = 'TRACKER',
   DIET = 'DIET',
   HEALTH = 'HEALTH',
-  HYDRATION = 'HYDRATION',
+  REMINDERS = 'REMINDERS',
   STORYTIME = 'STORYTIME',
-  ASSISTANT = 'ASSISTANT'
+  ASSISTANT = 'ASSISTANT',
+  HYDRATION = 'HYDRATION'
 }
