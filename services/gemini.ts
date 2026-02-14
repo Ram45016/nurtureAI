@@ -3,6 +3,8 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+
+
 /**
  * GEMINI TEXT REASONING ENGINE
  * Optimized for high-fidelity pediatric advice and reasoning.
