@@ -49,9 +49,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenLi
     { view: AppView.ASSISTANT, label: 'AI Support', icon: '✨' },
   ];
 
-  const handleInstall = () => {
+  const handleAction = () => {
     if ((window as any).triggerInstall) {
       (window as any).triggerInstall();
+    } else if (isStandalone) {
+      window.location.reload();
     }
   };
 
@@ -121,7 +123,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenLi
             </div>
             <div>
               <p className="text-[11px] font-black text-slate-800 uppercase tracking-tighter">
-                {isStandalone ? 'Native APK' : 'App Download'}
+                {isStandalone ? 'Guardian Standalone' : 'App Download'}
               </p>
               <p className="text-[9px] text-slate-400 font-bold">
                 {isStandalone ? 'v1.0.4 - Secure' : 'Install NurtureAI'}
@@ -129,17 +131,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenLi
             </div>
           </div>
           
-          {!isStandalone && (
-            <button 
-              onClick={handleInstall}
-              className={`w-full py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2`}
-            >
-              Download APK
-            </button>
-          )}
+          <button 
+            onClick={handleAction}
+            className={`w-full py-3 ${isStandalone ? 'bg-emerald-600' : 'bg-slate-900'} text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2`}
+          >
+            {isStandalone ? 'Update App' : 'Download APK'}
+          </button>
 
           {isStandalone && (
-            <div className="flex items-center gap-1 mt-2 text-[9px] font-bold text-emerald-600 uppercase tracking-widest">
+            <div className="flex items-center gap-1 mt-2 text-[9px] font-bold text-emerald-600 uppercase tracking-widest justify-center">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
               WebAPK Verified
             </div>

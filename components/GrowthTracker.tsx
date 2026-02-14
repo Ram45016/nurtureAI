@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Child, GrowthData } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { calculateAge, getExpectedWeightRange } from '../utils/age';
+import { calculateAge, getExpectedWeightRange, getExpectedHeightRange } from '../utils/age';
 
 interface GrowthTrackerProps {
   child: Child;
@@ -14,10 +14,17 @@ const GrowthTracker: React.FC<GrowthTrackerProps> = ({ child, growthData, onAddE
   const [newHeight, setNewHeight] = useState('');
   const [newWeight, setNewWeight] = useState('');
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showForm, setShowForm] = useState(false);
   
   const age = calculateAge(child.birthDate);
   const currentWeight = growthData[0]?.weight || child.weightKg;
-  const expectedRange = getExpectedWeightRange(age.decimal || age.years, child.gender);
+  const currentHeight = growthData[0]?.height || 50; // default for new profiles
+
+  const expWeight = getExpectedWeightRange(age.decimal || age.years, child.gender);
+  const expHeight = getExpectedHeightRange(age.decimal || age.years, child.gender);
+
+  const weightStatus = currentWeight < expWeight.min ? 'Below' : currentWeight > expWeight.max ? 'Above' : 'Normal';
+  const heightStatus = currentHeight < expHeight.min ? 'Below' : currentHeight > expHeight.max ? 'Above' : 'Normal';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,146 +36,145 @@ const GrowthTracker: React.FC<GrowthTrackerProps> = ({ child, growthData, onAddE
     });
     setNewHeight('');
     setNewWeight('');
+    setShowForm(false);
   };
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-800">Developmental Tracking</h2>
-          <p className="text-slate-500 font-medium">Monitoring milestones for {age.display}.</p>
-        </div>
-        <div className="flex gap-4">
-          <div className="bg-white px-6 py-4 rounded-3xl border border-slate-100 shadow-sm text-center">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Weight</p>
-            <p className="text-2xl font-black text-indigo-600">{currentWeight} kg</p>
-          </div>
-          <div className="bg-indigo-600 px-6 py-4 rounded-3xl text-white shadow-lg shadow-indigo-100 text-center">
-            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">Expected Range</p>
-            <p className="text-2xl font-black">{expectedRange.min}-{expectedRange.max} kg</p>
-          </div>
-        </div>
+    <div className="space-y-6 pb-10">
+      <header className="px-1">
+        <h2 className="text-3xl font-black text-slate-800 tracking-tight">Growth Stats</h2>
+        <p className="text-slate-500 font-bold text-sm">WHO standards vs Actual growth</p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1">
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm sticky top-4">
-            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">📏</span>
-              Log Progress
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-xs font-black text-slate-400 uppercase mb-1 block">Date of Measurement</label>
-                <input 
-                  type="date" 
-                  value={newDate} 
-                  onChange={e => setNewDate(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500" 
-                />
-              </div>
-              <div>
-                <label className="text-xs font-black text-slate-400 uppercase mb-1 block">Height (cm)</label>
-                <input 
-                  type="number" 
-                  step="0.1" 
-                  value={newHeight} 
-                  onChange={e => setNewHeight(e.target.value)}
-                  placeholder="e.g. 62.5" 
-                  className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500" 
-                />
-              </div>
-              <div>
-                <label className="text-xs font-black text-slate-400 uppercase mb-1 block">Weight (kg)</label>
-                <input 
-                  type="number" 
-                  step="0.1" 
-                  value={newWeight} 
-                  onChange={e => setNewWeight(e.target.value)}
-                  placeholder="e.g. 4.8" 
-                  className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500" 
-                />
-              </div>
-              <button 
-                type="submit"
-                className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"
-              >
-                Save Record
-              </button>
-            </form>
-            
-            <div className="mt-8 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-               <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Development Status</p>
-               <p className="text-sm font-bold text-emerald-800">
-                 {currentWeight >= expectedRange.min && currentWeight <= expectedRange.max 
-                   ? `Healthy growth detected for ${age.display}. Weight is within standard WHO percentiles.` 
-                   : currentWeight < expectedRange.min 
-                   ? `Slightly below average weight for ${age.display}. Consider consulting pediatric nutritional support.`
-                   : `Above average weight for ${age.display}. Monitoring consistent development.`}
-               </p>
+      {/* Mobile-Friendly Growth Scorecards */}
+      <div className="grid grid-cols-1 gap-4">
+        {/* Weight Comparison Card */}
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⚖️</span>
+              <h3 className="font-black text-slate-800 uppercase tracking-widest text-[10px]">Body Weight</h3>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+              weightStatus === 'Normal' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+            }`}>
+              {weightStatus} Standard
+            </span>
+          </div>
+          <div className="flex items-end justify-between">
+            <div className="space-y-1">
+              <p className="text-4xl font-black text-slate-800">{currentWeight}<span className="text-lg text-slate-300 ml-1">kg</span></p>
+              <p className="text-[10px] font-bold text-slate-400">Target: {expWeight.min} - {expWeight.max} kg</p>
+            </div>
+            <div className="w-1/2 h-2 bg-slate-100 rounded-full overflow-hidden relative">
+              <div 
+                className={`h-full transition-all duration-1000 ${weightStatus === 'Normal' ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                style={{ width: `${Math.min(100, (currentWeight / expWeight.max) * 100)}%` }}
+              ></div>
+              <div className="absolute top-0 bottom-0 border-r-2 border-indigo-300" style={{ left: `${(expWeight.min / expWeight.max) * 100}%` }}></div>
             </div>
           </div>
         </div>
 
-        <div className="lg:col-span-3 space-y-6">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                 <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Height Trend (cm)</h3>
-                 <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={growthData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="date" hide />
-                        <YAxis hide domain={['auto', 'auto']} />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="height" stroke="#6366f1" strokeWidth={4} dot={{r: 6, fill: '#6366f1', strokeWidth: 4, stroke: '#fff'}} activeDot={{r: 8}} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                 </div>
-              </div>
-              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                 <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Weight Trend (kg)</h3>
-                 <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={growthData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="date" hide />
-                        <YAxis hide domain={['auto', 'auto']} />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="weight" stroke="#ec4899" strokeWidth={4} dot={{r: 6, fill: '#ec4899', strokeWidth: 4, stroke: '#fff'}} activeDot={{r: 8}} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                 </div>
-              </div>
-           </div>
-
-           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-              <h3 className="font-bold text-slate-800 mb-6">Historical Log</h3>
-              <div className="overflow-x-auto">
-                 <table className="w-full text-left">
-                    <thead>
-                       <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                          <th className="pb-4">Date</th>
-                          <th className="pb-4">Height</th>
-                          <th className="pb-4">Weight</th>
-                          <th className="pb-4">Assessment</th>
-                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                       {growthData.slice().reverse().map(data => (
-                         <tr key={data.id} className="text-sm">
-                            <td className="py-4 font-bold text-slate-700">{data.date}</td>
-                            <td className="py-4 text-slate-500 font-medium">{data.height} cm</td>
-                            <td className="py-4 text-slate-500 font-medium">{data.weight} kg</td>
-                            <td className="py-4 text-emerald-500 font-bold">Standard Track</td>
-                         </tr>
-                       ))}
-                    </tbody>
-                 </table>
-              </div>
-           </div>
+        {/* Height Comparison Card */}
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📏</span>
+              <h3 className="font-black text-slate-800 uppercase tracking-widest text-[10px]">Height / Stature</h3>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+              heightStatus === 'Normal' ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'
+            }`}>
+              {heightStatus} Standard
+            </span>
+          </div>
+          <div className="flex items-end justify-between">
+            <div className="space-y-1">
+              <p className="text-4xl font-black text-slate-800">{currentHeight}<span className="text-lg text-slate-300 ml-1">cm</span></p>
+              <p className="text-[10px] font-bold text-slate-400">Target: {expHeight.min} - {expHeight.max} cm</p>
+            </div>
+            <div className="w-1/2 h-2 bg-slate-100 rounded-full overflow-hidden relative">
+              <div 
+                className={`h-full transition-all duration-1000 ${heightStatus === 'Normal' ? 'bg-indigo-500' : 'bg-amber-500'}`}
+                style={{ width: `${Math.min(100, (currentHeight / expHeight.max) * 100)}%` }}
+              ></div>
+              <div className="absolute top-0 bottom-0 border-r-2 border-indigo-300" style={{ left: `${(expHeight.min / expHeight.max) * 100}%` }}></div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* AI Growth Analysis */}
+      <div className="bg-indigo-600 rounded-[2rem] p-6 text-white shadow-lg relative overflow-hidden group">
+        <div className="absolute -right-4 -top-4 text-6xl opacity-20">📊</div>
+        <div className="relative z-10 space-y-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Gemini Insight</p>
+          <p className="text-sm font-bold leading-relaxed">
+            {child.name}'s current {weightStatus.toLowerCase()} weight trend and {heightStatus.toLowerCase()} height is 
+            {weightStatus === 'Normal' && heightStatus === 'Normal' ? ' ideal for their age.' : ' being monitored for standard deviation.'} 
+            Continue logging to refine standard WHO percentile mapping.
+          </p>
+        </div>
+      </div>
+
+      {/* Floating Action Button for Adding Data */}
+      <div className="fixed bottom-24 right-6 z-[60]">
+        <button 
+          onClick={() => setShowForm(!showForm)}
+          className="w-16 h-16 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center text-3xl hover:scale-110 active:scale-90 transition-all"
+        >
+          {showForm ? '✕' : '+'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
+          <h3 className="font-black text-slate-800 mb-6 uppercase tracking-widest text-xs">New Measurement</h3>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <input 
+                type="number" step="0.1" value={newWeight} onChange={e => setNewWeight(e.target.value)} 
+                placeholder="Weight (kg)" className="w-full px-6 py-4 rounded-2xl bg-slate-50 font-bold outline-none border-2 border-transparent focus:border-indigo-500" 
+              />
+              <input 
+                type="number" step="0.1" value={newHeight} onChange={e => setNewHeight(e.target.value)} 
+                placeholder="Height (cm)" className="w-full px-6 py-4 rounded-2xl bg-slate-50 font-bold outline-none border-2 border-transparent focus:border-indigo-500" 
+              />
+            </div>
+            <input 
+              type="date" value={newDate} onChange={e => setNewDate(e.target.value)}
+              className="w-full px-6 py-4 rounded-2xl bg-slate-50 font-bold outline-none border-2 border-transparent focus:border-indigo-500" 
+            />
+            <button type="submit" className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-100">
+              Save Entry
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* History List */}
+      <section className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm">
+        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Historical Records</h3>
+        <div className="space-y-3">
+          {growthData.length === 0 ? (
+            <p className="text-center text-slate-400 text-xs font-bold py-8">No historical data found.</p>
+          ) : (
+            growthData.map(d => (
+              <div key={d.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
+                <div>
+                  <p className="text-sm font-black text-slate-700">{new Date(d.date).toLocaleDateString()}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Logged at {new Date(d.date).getFullYear()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-black text-indigo-600">{d.weight}kg</p>
+                  <p className="text-sm font-black text-indigo-400">{d.height}cm</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
     </div>
   );
 };

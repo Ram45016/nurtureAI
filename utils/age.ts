@@ -30,11 +30,24 @@ export const calculateAge = (birthDate: string) => {
 };
 
 export const getExpectedWeightRange = (ageInYears: number, gender: string) => {
-  if (ageInYears < 1) return { min: 3, max: 10 };
-  if (ageInYears < 2) return { min: 10, max: 13 };
-  if (ageInYears < 5) return { min: 13, max: 19 };
-  if (ageInYears < 8) return { min: 19, max: 26 };
-  return { min: 26, max: 35 };
+  // Simple approximation of WHO growth standards for a 0-10 year range
+  if (ageInYears < 0.5) return { min: 3.2, max: 7.5 };
+  if (ageInYears < 1) return { min: 7.5, max: 10.5 };
+  if (ageInYears < 2) return { min: 10, max: 13.5 };
+  if (ageInYears < 4) return { min: 13, max: 18 };
+  if (ageInYears < 6) return { min: 17, max: 23 };
+  if (ageInYears < 8) return { min: 21, max: 30 };
+  return { min: 28, max: 42 };
+};
+
+export const getExpectedHeightRange = (ageInYears: number, gender: string) => {
+  if (ageInYears < 0.5) return { min: 48, max: 66 };
+  if (ageInYears < 1) return { min: 66, max: 76 };
+  if (ageInYears < 2) return { min: 80, max: 90 };
+  if (ageInYears < 4) return { min: 95, max: 105 };
+  if (ageInYears < 6) return { min: 105, max: 118 };
+  if (ageInYears < 8) return { min: 115, max: 130 };
+  return { min: 130, max: 150 };
 };
 
 export const getHydrationGoal = (ageInYears: number) => {

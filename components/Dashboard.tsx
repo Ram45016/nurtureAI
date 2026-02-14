@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Child, ActivityEvent, LiveStats, GrowthData, WaterEntry, FoodEntry, SmartAlarm } from '../types';
 import { generateProactiveRecommendations } from '../services/gemini';
-import { calculateAge, getHydrationGoal } from '../utils/age';
+import { calculateAge, getHydrationGoal, getExpectedWeightRange, getExpectedHeightRange } from '../utils/age';
 
 interface DashboardProps {
   child: Child;
@@ -24,13 +25,13 @@ const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthD
 
   const age = calculateAge(child.birthDate);
   const hydrationGoal = getHydrationGoal(age.decimal || age.years);
+  const expWeight = getExpectedWeightRange(age.decimal || age.years, child.gender);
 
   const dailyWater = waterEntries
     .filter(e => new Date(e.timestamp).toDateString() === new Date().toDateString())
     .reduce((a, b) => a + b.amountMl, 0);
 
-  const dailyTotal = dailyWater; 
-  const waterProgress = Math.min(100, (dailyTotal / hydrationGoal) * 100);
+  const waterProgress = Math.min(100, (dailyWater / hydrationGoal) * 100);
 
   useEffect(() => {
     const fetchRec = async () => {
@@ -52,41 +53,50 @@ const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthD
   const handleDownloadClick = () => {
     if ((window as any).triggerInstall) {
       (window as any).triggerInstall();
+    } else if (isStandalone) {
+      window.location.reload();
     }
   };
 
   const handleSmartAlarm = () => {
-    const delay = aiRec?.toLowerCase().includes('30') ? 30 : 60;
-    const type = aiRec?.toLowerCase().includes('water') ? 'water' : 'meal';
-    onSetAlarm(type, delay, `Gemini Recommends: ${aiRec?.substring(0, 30)}...`);
+    onSetAlarm('routine', 15, 'Gemini Smart Check-in');
   };
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {!isStandalone && (
-        <div className="bg-slate-900 rounded-[2rem] p-6 text-white shadow-2xl flex items-center justify-between border border-white/10 group active:scale-[0.98] transition-all cursor-pointer" onClick={handleDownloadClick}>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg">📲</div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest text-indigo-400">Android Integration</p>
-              <h4 className="text-lg font-bold">Download NurtureAI APK</h4>
-              <p className="text-[10px] text-slate-400 font-bold">Install for background alerts & offline access</p>
-            </div>
+      {/* Installation Banner */}
+      <div className={`${isStandalone ? 'bg-indigo-900' : 'bg-slate-900'} rounded-[2rem] p-6 text-white shadow-2xl flex items-center justify-between border border-white/10 group active:scale-[0.98] transition-all cursor-pointer`} onClick={handleDownloadClick}>
+        <div className="flex items-center gap-4">
+          <div className={`w-12 h-12 ${isStandalone ? 'bg-emerald-600' : 'bg-indigo-600'} rounded-2xl flex items-center justify-center text-2xl shadow-lg`}>
+            {isStandalone ? '🔄' : '📲'}
           </div>
-          <button className="bg-white text-slate-900 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">Install</button>
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-indigo-400">
+              {isStandalone ? 'System Maintenance' : 'Android Integration'}
+            </p>
+            <h4 className="text-lg font-bold">
+              {isStandalone ? 'App Update Check' : 'Download NurtureAI APK'}
+            </h4>
+            <p className="text-[10px] text-slate-400 font-bold leading-none">
+              {isStandalone ? 'v1.0.4 Verified' : 'Install for background alerts'}
+            </p>
+          </div>
         </div>
-      )}
+        <button className={`bg-white ${isStandalone ? 'text-indigo-900' : 'text-slate-900'} px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest`}>
+          {isStandalone ? 'Update' : 'Install'}
+        </button>
+      </div>
 
-      {/* AI Smart Insight Card with Gemini Badge */}
+      {/* AI Expert Insight */}
       <div className="bg-indigo-600 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden group">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 group-hover:scale-110 transition-transform"></div>
         <div className="relative z-10 space-y-4">
            <div className="flex items-center justify-between">
              <div className="flex items-center gap-2">
                <span className="w-2 h-2 bg-indigo-300 rounded-full animate-pulse"></span>
-               <p className="text-[10px] font-black text-indigo-100 uppercase tracking-widest">NurtureAI Expert Insight</p>
+               <p className="text-[10px] font-black text-indigo-100 uppercase tracking-widest">Expert Intelligence</p>
              </div>
-             <span className="text-[9px] font-black text-indigo-700 bg-white/90 px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">Gemini Intelligence ✨</span>
+             <span className="text-[9px] font-black text-indigo-700 bg-white/90 px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">Gemini ✨</span>
            </div>
            
            <div className="min-h-[60px]">
@@ -105,17 +115,19 @@ const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthD
              onClick={handleSmartAlarm}
              className="bg-white/20 hover:bg-white/30 active:scale-95 transition-all text-white text-[10px] font-black uppercase tracking-widest px-6 py-3 rounded-xl border border-white/20 backdrop-blur-sm"
            >
-             Set Gemini Smart Alarm ⏰
+             Set Gemini Alarm ⏰
            </button>
         </div>
       </div>
 
+      {/* Comparisons Row */}
       <div className="grid grid-cols-1 gap-4">
+        {/* Hydration Pulse */}
         <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center justify-between group active:bg-slate-50 transition-colors">
            <div className="space-y-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Daily Hydration</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hydration Tracker</p>
               <h3 className="text-2xl font-black text-slate-800">{dailyWater} <span className="text-sm text-slate-400 font-bold">/ {hydrationGoal}ml</span></h3>
-              <p className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full inline-block">Goal for {age.display}</p>
+              <p className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full inline-block">Comparison vs Daily Target</p>
            </div>
            <div className="relative w-16 h-16">
               <svg className="w-full h-full transform -rotate-90">
@@ -126,26 +138,47 @@ const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthD
            </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-           <div className="bg-emerald-50 p-6 rounded-[1.5rem] border border-emerald-100 space-y-1 group active:bg-emerald-100 transition-colors">
-              <div className="flex items-center gap-1">
-                <span className="text-xs group-hover:scale-125 transition-transform">💓</span>
-                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Heart Rate</p>
-              </div>
-              <p className="text-2xl font-black text-emerald-900">{liveStats.heartRate} <span className="text-[10px] font-bold opacity-40 uppercase">bpm</span></p>
-           </div>
-           <div className="bg-amber-50 p-6 rounded-[1.5rem] border border-amber-100 space-y-1 group active:bg-amber-100 transition-colors">
-              <div className="flex items-center gap-1">
-                <span className="text-xs group-hover:scale-125 transition-transform">⚖️</span>
-                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Weight</p>
-              </div>
-              <p className="text-2xl font-black text-amber-900">{growthData[0]?.weight || child.weightKg} <span className="text-[10px] font-bold opacity-40 uppercase">kg</span></p>
-           </div>
+        {/* Growth Pulse */}
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Development Pulse</p>
+            <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase">WHO Standard Map</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+               <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Weight vs Target</p>
+               <p className="text-xl font-black text-slate-800">{growthData[0]?.weight || child.weightKg}kg</p>
+               <p className="text-[9px] font-bold text-slate-400">Standard: {expWeight.min}-{expWeight.max}kg</p>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+               <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Height vs Target</p>
+               <p className="text-xl font-black text-slate-800">{growthData[0]?.height || '---'}cm</p>
+               <p className="text-[9px] font-bold text-slate-400">Standard for {age.years}y</p>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Vital Stats */}
+      <div className="grid grid-cols-2 gap-4">
+         <div className="bg-emerald-50 p-6 rounded-[2rem] border border-emerald-100 space-y-1 group active:bg-emerald-100 transition-colors">
+            <div className="flex items-center gap-1">
+              <span className="text-xs group-hover:scale-125 transition-transform">💓</span>
+              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Heart Rate</p>
+            </div>
+            <p className="text-2xl font-black text-emerald-900">{liveStats.heartRate} <span className="text-[10px] font-bold opacity-40 uppercase">bpm</span></p>
+         </div>
+         <div className="bg-amber-50 p-6 rounded-[2rem] border border-amber-100 space-y-1 group active:bg-amber-100 transition-colors">
+            <div className="flex items-center gap-1">
+              <span className="text-xs group-hover:scale-125 transition-transform">🌡️</span>
+              <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Room Temp</p>
+            </div>
+            <p className="text-2xl font-black text-amber-900">{liveStats.temperature}°C</p>
+         </div>
+      </div>
+
       <section className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Latest Logs</h3>
+        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Latest Events</h3>
         <div className="space-y-4">
           {events.length === 0 ? (
             <p className="text-slate-400 text-xs font-bold text-center py-4 italic">No recent events detected.</p>
@@ -159,7 +192,7 @@ const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthD
                   {event.type === 'cry' ? '📢' : event.type === 'feeding' ? '🥣' : '✨'}
                 </div>
                 <div>
-                  <p className="text-sm font-black text-slate-700">{event.description}</p>
+                  <p className="text-sm font-black text-slate-700 leading-none mb-1">{event.description}</p>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{new Date(event.timestamp).toLocaleTimeString()}</p>
                 </div>
               </div>

@@ -1,41 +1,60 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Child } from '../types';
 
 interface OnboardingProps {
   onComplete: (child: Child) => void;
+  initialChild?: Child | null;
+  onCancel?: () => void;
 }
 
-const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
+const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialChild, onCancel }) => {
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState<'boy' | 'girl' | 'other'>('boy');
   const [birthWeight, setBirthWeight] = useState('3.5');
   const [currentWeight, setCurrentWeight] = useState('3.5');
 
+  useEffect(() => {
+    if (initialChild) {
+      setName(initialChild.name);
+      setDob(initialChild.birthDate);
+      setGender(initialChild.gender);
+      setBirthWeight(initialChild.birthWeightKg.toString());
+      setCurrentWeight(initialChild.weightKg.toString());
+    }
+  }, [initialChild]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !dob) return;
     onComplete({
-      id: Date.now().toString(),
+      id: initialChild ? initialChild.id : Date.now().toString(),
       name,
       birthDate: dob,
       gender,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+      avatar: initialChild ? initialChild.avatar : `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
       birthWeightKg: parseFloat(birthWeight),
       weightKg: parseFloat(currentWeight)
     });
   };
 
   return (
-    <div className="min-h-screen bg-indigo-600 flex items-center justify-center p-6 safe-area-top safe-area-bottom">
-      <div className="bg-white rounded-[2.5rem] p-8 md:p-12 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
-        <div className="text-center mb-10">
+    <div className="min-h-screen bg-indigo-600 flex items-center justify-center p-6 safe-area-top safe-area-bottom overflow-y-auto">
+      <div className="bg-white rounded-[2.5rem] p-8 md:p-12 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[95vh] custom-scrollbar animate-in zoom-in-95 duration-300">
+        <div className="text-center mb-10 relative">
+          {onCancel && (
+            <button onClick={onCancel} className="absolute -top-4 -right-4 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors">✕</button>
+          )}
           <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-5xl">🍼</span>
+            <span className="text-5xl">{initialChild ? '📝' : '🍼'}</span>
           </div>
-          <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Welcome to NurtureAI</h2>
-          <p className="text-slate-500 mt-2 font-medium leading-relaxed">Let's create your first child's profile to get started.</p>
+          <h2 className="text-3xl font-bold text-slate-800 tracking-tight">
+            {initialChild ? 'Update Profile' : 'Welcome to NurtureAI'}
+          </h2>
+          <p className="text-slate-500 mt-2 font-medium leading-relaxed">
+            {initialChild ? `Modify details for ${initialChild.name}` : "Let's create your first child's profile to get started."}
+          </p>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -110,7 +129,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               type="submit" 
               className="w-full py-5 bg-indigo-600 text-white font-black text-lg rounded-2xl shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:scale-[1.01] active:scale-[0.99] transition-all"
             >
-              Start Monitoring
+              {initialChild ? 'Update Profile' : 'Start Monitoring'}
             </button>
           </div>
         </form>
