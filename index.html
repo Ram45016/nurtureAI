@@ -61,7 +61,9 @@
       
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
+          // Use a relative path to ensure the Service Worker is registered from the same origin
+          // regardless of the hosting environment or proxy settings.
+          navigator.serviceWorker.register('./sw.js', { scope: './' })
             .then(reg => console.log('Guardian Active'))
             .catch(err => console.error('Guardian Offline', err));
         });

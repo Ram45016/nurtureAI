@@ -1,5 +1,5 @@
 {
-  "name": "nurtureai-smart-guardian",
+  "name": "nurtureai-guardian",
   "description": "An AI-powered baby and child monitoring application for ages 0-10, featuring real-time crying analysis, activity tracking, and parenting advice.",
   "requestFramePermissions": [
     "microphone"

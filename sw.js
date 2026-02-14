@@ -1,9 +1,9 @@
 
-const CACHE_NAME = 'nurture-ai-v5';
+const CACHE_NAME = 'nurture-ai-v6';
 const PRECACHE_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
+  './',
+  'index.html',
+  'manifest.json',
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap'
 ];
@@ -43,8 +43,10 @@ self.addEventListener('fetch', (event) => {
         // Return cached, but update in background for local files
         if (isLocal) {
           fetch(event.request).then((networkResponse) => {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          });
+            if (networkResponse && networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+            }
+          }).catch(() => {});
         }
         return cachedResponse;
       }
@@ -66,7 +68,7 @@ self.addEventListener('fetch', (event) => {
       });
     }).catch(() => {
       if (event.request.mode === 'navigate') {
-        return caches.match('/index.html');
+        return caches.match('index.html');
       }
     })
   );
