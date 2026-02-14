@@ -14,19 +14,22 @@ const ChildProfileModal: React.FC<ChildProfileModalProps> = ({ isOpen, onClose, 
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState<'boy' | 'girl' | 'other'>('boy');
-  const [weight, setWeight] = useState('3.5');
+  const [birthWeight, setBirthWeight] = useState('3.5');
+  const [currentWeight, setCurrentWeight] = useState('3.5');
 
   useEffect(() => {
     if (editingChild) {
       setName(editingChild.name);
       setDob(editingChild.birthDate);
       setGender(editingChild.gender);
-      setWeight(editingChild.weightKg.toString());
+      setBirthWeight(editingChild.birthWeightKg?.toString() || editingChild.weightKg.toString());
+      setCurrentWeight(editingChild.weightKg.toString());
     } else {
       setName('');
       setDob('');
       setGender('boy');
-      setWeight('3.5');
+      setBirthWeight('3.5');
+      setCurrentWeight('3.5');
     }
   }, [editingChild, isOpen]);
 
@@ -41,7 +44,8 @@ const ChildProfileModal: React.FC<ChildProfileModalProps> = ({ isOpen, onClose, 
       birthDate: dob,
       gender,
       avatar: editingChild ? editingChild.avatar : `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
-      weightKg: parseFloat(weight)
+      birthWeightKg: parseFloat(birthWeight),
+      weightKg: parseFloat(currentWeight)
     });
     onClose();
   };
@@ -49,13 +53,13 @@ const ChildProfileModal: React.FC<ChildProfileModalProps> = ({ isOpen, onClose, 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-        <div className="p-8 md:p-10">
+        <div className="p-8 md:p-10 max-h-[90vh] overflow-y-auto custom-scrollbar">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-2xl font-bold text-slate-800">
               {editingChild ? 'Edit Profile' : 'Add New Child'}
             </h2>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-              <span className="text-2xl">✕</span>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors p-2">
+              <span className="text-2xl leading-none">✕</span>
             </button>
           </div>
 
@@ -72,15 +76,26 @@ const ChildProfileModal: React.FC<ChildProfileModalProps> = ({ isOpen, onClose, 
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Date of Birth</label>
+              <input 
+                type="date" 
+                value={dob} 
+                onChange={e => setDob(e.target.value)} 
+                required 
+                className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-900 outline-none" 
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Date of Birth</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Birth Weight (kg)</label>
                 <input 
-                  type="date" 
-                  value={dob} 
-                  onChange={e => setDob(e.target.value)} 
-                  required 
-                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-900 outline-none" 
+                  type="number" 
+                  step="0.1" 
+                  value={birthWeight} 
+                  onChange={e => setBirthWeight(e.target.value)} 
+                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-900 placeholder:text-slate-300 outline-none" 
                 />
               </div>
               <div>
@@ -88,8 +103,8 @@ const ChildProfileModal: React.FC<ChildProfileModalProps> = ({ isOpen, onClose, 
                 <input 
                   type="number" 
                   step="0.1" 
-                  value={weight} 
-                  onChange={e => setWeight(e.target.value)} 
+                  value={currentWeight} 
+                  onChange={e => setCurrentWeight(e.target.value)} 
                   className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-900 placeholder:text-slate-300 outline-none" 
                 />
               </div>

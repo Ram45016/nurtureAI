@@ -16,7 +16,7 @@ const Reminders: React.FC<RemindersProps> = ({ child, alarms, onSetAlarm, onRemo
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
       <header className="space-y-1">
         <h2 className="text-3xl font-black text-slate-800 tracking-tight">Smart Reminders</h2>
-        <p className="text-sm font-bold text-slate-500">AI-suggested schedules for {child.name}</p>
+        <p className="text-sm font-bold text-slate-500">Gemini-suggested schedules for {child.name}</p>
       </header>
 
       <div className="grid grid-cols-2 gap-4">
@@ -84,7 +84,7 @@ const Reminders: React.FC<RemindersProps> = ({ child, alarms, onSetAlarm, onRemo
           <div className="space-y-2">
             <p className="text-xs font-black text-indigo-900 uppercase tracking-widest">Smart Routine Logic</p>
             <p className="text-[11px] font-bold text-indigo-700 leading-relaxed italic">
-              "Your Smart Guardian uses Gemini Flash 3.1 to analyze feeding and hydration patterns. It proactively updates these reminders as developmental milestones are reached."
+              "Your Smart Guardian uses Gemini 3 Flash and Pro models to analyze feeding and hydration patterns. It proactively updates these reminders as developmental milestones are reached."
             </p>
           </div>
         </div>

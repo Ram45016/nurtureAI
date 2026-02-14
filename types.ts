@@ -5,7 +5,8 @@ export interface Child {
   birthDate: string;
   gender: 'boy' | 'girl' | 'other';
   avatar: string;
-  weightKg: number;
+  weightKg: number; // Current weight
+  birthWeightKg: number; // Weight at birth
 }
 
 export interface ActivityEvent {
