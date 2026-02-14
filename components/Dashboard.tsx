@@ -17,7 +17,12 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthData, waterEntries, foodEntries, onSetAlarm }) => {
   const [aiRec, setAiRec] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone);
+  }, []);
+
   const age = calculateAge(child.birthDate);
   const hydrationGoal = getHydrationGoal(age.decimal || age.years);
   const nextVax = getNextVaccineRecommendation(age.totalMonths);
@@ -42,9 +47,13 @@ const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthD
     fetchRec();
   }, [events.length, dailyWater, child.name]);
 
+  const handleDownloadClick = () => {
+    if ((window as any).triggerInstall) {
+      (window as any).triggerInstall();
+    }
+  };
+
   const handleSmartAlarm = () => {
-    // Basic heuristic to parse AI rec for time (e.g., "in 30 mins")
-    // In a real app, we'd use a structured response, but for now we default to 30m or 60m.
     const delay = aiRec?.toLowerCase().includes('30') ? 30 : 60;
     const type = aiRec?.toLowerCase().includes('water') ? 'water' : 'meal';
     onSetAlarm(type, delay, `AI Remind: ${aiRec?.substring(0, 30)}...`);
@@ -52,7 +61,22 @@ const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthD
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* AI Smart Insight Card (Android MD3 Surface) */}
+      {/* Native Install CTA (Only shown if not running as APK) */}
+      {!isStandalone && (
+        <div className="bg-slate-900 rounded-[2rem] p-6 text-white shadow-2xl flex items-center justify-between border border-white/10 group active:scale-[0.98] transition-all" onClick={handleDownloadClick}>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg">📲</div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-indigo-400">Android Integration</p>
+              <h4 className="text-lg font-bold">Download NurtureAI APK</h4>
+              <p className="text-[10px] text-slate-400 font-bold">Install for background alerts & offline access</p>
+            </div>
+          </div>
+          <button className="bg-white text-slate-900 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">Install</button>
+        </div>
+      )}
+
+      {/* AI Smart Insight Card */}
       <div className="bg-indigo-600 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8"></div>
         <div className="relative z-10 space-y-4">
@@ -81,7 +105,6 @@ const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthD
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        {/* Hydration MD3 Progress Card */}
         <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center justify-between group active:bg-slate-50 transition-colors">
            <div className="space-y-1">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Daily Hydration</p>
@@ -97,7 +120,6 @@ const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthD
            </div>
         </div>
 
-        {/* Vital Signs Row (Android MD3 Compact Cards) */}
         <div className="grid grid-cols-2 gap-4">
            <div className="bg-emerald-50 p-6 rounded-[1.5rem] border border-emerald-100 space-y-1">
               <div className="flex items-center gap-1">
@@ -112,24 +134,6 @@ const Dashboard: React.FC<DashboardProps> = ({ child, events, liveStats, growthD
                 <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Weight</p>
               </div>
               <p className="text-2xl font-black text-amber-900">{growthData[0]?.weight || child.weightKg} <span className="text-[10px] font-bold opacity-40 uppercase">kg</span></p>
-           </div>
-        </div>
-
-        {/* Development & Vax Alerts */}
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm space-y-4">
-           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Medical Milestones</h3>
-           <div className="flex items-center gap-4 p-4 bg-rose-50 rounded-2xl border border-rose-100">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm">🏥</div>
-              <div className="flex-1 min-w-0">
-                 <p className="text-xs font-black text-slate-800 truncate">Upcoming Vaccine</p>
-                 <p className="text-[10px] font-bold text-rose-600 leading-tight">{nextVax.name}</p>
-              </div>
-              <button 
-                onClick={() => onSetAlarm('health', 1440, `Vaccination Appt: ${nextVax.name}`)}
-                className="w-8 h-8 bg-white text-rose-500 rounded-full flex items-center justify-center border border-rose-100 shadow-sm text-xs font-bold"
-              >
-                ⏰
-              </button>
            </div>
         </div>
       </div>

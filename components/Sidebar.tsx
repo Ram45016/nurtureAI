@@ -44,6 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenLi
     { view: AppView.DIET, label: 'Nutrition', icon: '🍎' },
     { view: AppView.HEALTH, label: 'Health Center', icon: '🏥' },
     { view: AppView.HYDRATION, label: 'Hydration', icon: '💧' },
+    { view: AppView.REMINDERS, label: 'Reminders', icon: '⏰' },
     { view: AppView.STORYTIME, label: 'Storytime', icon: '📚' },
     { view: AppView.ASSISTANT, label: 'AI Support', icon: '✨' },
   ];
@@ -90,12 +91,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenLi
                   <img src={child.avatar} alt={child.name} className="w-8 h-8 rounded-full shadow-sm" />
                   <span className={`font-bold text-sm ${selectedChild?.id === child.id ? 'text-indigo-700' : 'text-slate-600'}`}>{child.name}</span>
                 </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onEditChild(child); }}
-                  className={`p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-white text-slate-400 hover:text-indigo-600 ${selectedChild?.id === child.id ? 'opacity-100' : ''}`}
-                >
-                  <span className="text-xs">⚙️</span>
-                </button>
               </div>
             ))}
           </div>
@@ -122,14 +117,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenLi
         <div className="bg-white p-5 rounded-[1.5rem] border border-slate-200 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className={`w-8 h-8 ${isStandalone ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-indigo-600'} rounded-lg flex items-center justify-center text-lg`}>
-              {isStandalone ? '🛡️' : '📲'}
+              {isStandalone ? '🛡️' : '📥'}
             </div>
             <div>
               <p className="text-[11px] font-black text-slate-800 uppercase tracking-tighter">
-                {isStandalone ? 'Native Active' : 'Native Integration'}
+                {isStandalone ? 'Native APK' : 'App Download'}
               </p>
               <p className="text-[9px] text-slate-400 font-bold">
-                {isStandalone ? 'Vercel Deployment' : 'Install as Android APK'}
+                {isStandalone ? 'v1.0.4 - Secure' : 'Install NurtureAI'}
               </p>
             </div>
           </div>
@@ -137,15 +132,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenLi
           {!isStandalone && (
             <button 
               onClick={handleInstall}
-              className={`w-full py-3 ${isInstallable ? 'bg-indigo-600 animate-pulse' : 'bg-slate-900'} text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2`}
+              className={`w-full py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2`}
             >
-              {isInstallable ? '📥 Install APK Now' : '🔄 Check Compatibility'}
+              Download APK
             </button>
           )}
 
           {isStandalone && (
             <div className="flex items-center gap-1 mt-2 text-[9px] font-bold text-emerald-600 uppercase tracking-widest">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
               WebAPK Verified
             </div>
           )}
