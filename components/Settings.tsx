@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 
 interface SettingsProps {
   onSelectKey: () => Promise<void>;
@@ -7,103 +7,55 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ onSelectKey, isKeySelected }) => {
-  const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
-  const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>('kg');
-
   return (
-    <div className="space-y-8 pb-24 animate-in fade-in duration-500">
-      <header className="px-1 space-y-1">
-        <h2 className="text-3xl font-black text-slate-800 tracking-tight">System Settings</h2>
-        <p className="text-slate-500 font-bold text-sm">Configure NurtureAI Intelligence & Units</p>
-      </header>
-
-      {/* AI Key Management Section */}
-      <section className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-100">
+    <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <section className="bg-white rounded-[2.5rem] p-10 elevation-2 space-y-8 border border-slate-50">
+        <div className="flex flex-col items-center text-center space-y-5">
+          <div className="w-24 h-24 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white text-5xl elevation-3">
             🔑
           </div>
-          <div>
-            <h3 className="font-black text-slate-800 text-lg">Gemini AI Configuration</h3>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Model: Gemini 3 Pro Enabled</p>
-          </div>
-        </div>
-
-        <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-slate-700">Intelligence Status</span>
-            <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${isKeySelected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
-              <span className={`text-[10px] font-black uppercase tracking-widest ${isKeySelected ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {isKeySelected ? 'Connected & Active' : 'Key Missing'}
+          <div className="space-y-1">
+            <h3 className="text-2xl font-black text-slate-800 tracking-tight">System Identity</h3>
+            <div className="flex items-center justify-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${isKeySelected ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+              <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${isKeySelected ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {isKeySelected ? 'Cloud Engine Active' : 'Offline Mode'}
               </span>
             </div>
           </div>
-          <p className="text-xs text-slate-500 leading-relaxed font-medium">
-            To update or change your API key project, use the selection tool below. This ensures all AI features like crying analysis and proactive recommendations remain active.
+        </div>
+
+        <div className="bg-slate-50 p-8 rounded-[2rem] border border-slate-100/50 space-y-6">
+          <p className="text-xs text-slate-500 leading-relaxed font-bold text-center uppercase tracking-tight">
+            Authentication with Google Gemini 3
           </p>
+          
           <button 
-            onClick={onSelectKey}
-            className="w-full py-4 bg-white border-2 border-slate-200 hover:border-indigo-500 hover:text-indigo-600 text-slate-700 font-black rounded-2xl transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2"
+            onClick={() => { if(navigator.vibrate) navigator.vibrate(20); onSelectKey(); }}
+            className="w-full py-6 bg-slate-900 text-white font-black text-lg rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
           >
-            <span>🔄</span> Change API Project / Key
+            Update Security Key
           </button>
         </div>
-        
-        <div className="px-2">
-          <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline">
-            View Billing & Project Docs ↗
-          </a>
-        </div>
       </section>
 
-      {/* Preferences Section */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm space-y-6">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-4">Measurement Units</h3>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-700">Temperature</span>
-              <div className="flex bg-slate-100 p-1 rounded-xl">
-                <button onClick={() => setTempUnit('C')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${tempUnit === 'C' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Celsius</button>
-                <button onClick={() => setTempUnit('F')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${tempUnit === 'F' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Fahrenheit</button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-700">Weight</span>
-              <div className="flex bg-slate-100 p-1 rounded-xl">
-                <button onClick={() => setWeightUnit('kg')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${weightUnit === 'kg' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Kilograms</button>
-                <button onClick={() => setWeightUnit('lb')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${weightUnit === 'lb' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Pounds</button>
-              </div>
-            </div>
+      <div className="bg-white rounded-[2.5rem] p-8 elevation-1 space-y-4">
+        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4">Device Diagnostics</h4>
+        {[
+          { label: 'Guardian Version', value: '1.0.4 Native' },
+          { label: 'OS Integration', value: 'Android MD3' },
+          { label: 'Safety Protocol', value: 'Enabled' }
+        ].map((item, i) => (
+          <div key={i} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
+            <span className="text-xs font-bold text-slate-500">{item.label}</span>
+            <span className="text-xs font-black text-slate-800">{item.value}</span>
           </div>
-        </div>
-
-        <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm space-y-6">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-4">System Notifications</h3>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-700">Crying Alerts</span>
-              <div className="w-12 h-6 bg-indigo-600 rounded-full relative p-1 cursor-pointer">
-                <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between opacity-50">
-              <span className="font-bold text-slate-700">Nap Reminders</span>
-              <div className="w-12 h-6 bg-slate-200 rounded-full relative p-1 cursor-not-allowed">
-                <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="text-center py-6">
-        <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">NurtureAI v1.0.4-Stable • Privacy Verified</p>
+        ))}
       </div>
+
+      <p className="text-center text-[9px] font-black text-slate-300 uppercase tracking-[0.5em] pt-8">
+        Designed for Modern Parenting
+      </p>
     </div>
   );
 };

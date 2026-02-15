@@ -12,15 +12,9 @@ import Reminders from './components/Reminders';
 import Onboarding from './components/Onboarding';
 import ChildProfileModal from './components/ChildProfileModal';
 import HydrationTracker from './components/HydrationTracker';
-import Sidebar from './components/Sidebar';
+import BottomBar from './components/BottomBar';
+import TopBar from './components/TopBar';
 import Settings from './components/Settings';
-
-// Use 'any' for aistudio on Window to avoid "identical modifiers" errors with platform-injected globals
-declare global {
-  interface Window {
-    aistudio: any;
-  }
-}
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<AppView>(AppView.DASHBOARD);
@@ -97,7 +91,7 @@ const App: React.FC = () => {
     isBreathingRegular: true
   });
 
-  // Effects for Persistence
+  // Persistence Effects
   useEffect(() => localStorage.setItem('nurture_children', JSON.stringify(children)), [children]);
   useEffect(() => localStorage.setItem('nurture_selected_child', selectedChildId || ''), [selectedChildId]);
   useEffect(() => localStorage.setItem('nurture_alarms', JSON.stringify(alarms)), [alarms]);
@@ -108,50 +102,40 @@ const App: React.FC = () => {
   useEffect(() => localStorage.setItem('nurture_vaccines', JSON.stringify(vaccines)), [vaccines]);
   useEffect(() => localStorage.setItem('nurture_visits', JSON.stringify(visits)), [visits]);
 
-  // API Key Selection Logic following required race condition handling
   useEffect(() => {
     const checkKey = async () => {
-      if (window.aistudio) {
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        setIsKeySelected(hasKey);
+      if ((window as any).aistudio) {
+        try {
+          const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+          setIsKeySelected(hasKey);
+        } catch (e) {
+          setIsKeySelected(false);
+        }
+      } else {
+        setIsKeySelected(true); 
       }
     };
     checkKey();
-
     const handleError = () => {
       setIsKeySelected(false);
+      setActiveView(AppView.SETTINGS);
     };
     window.addEventListener('gemini-key-error', handleError);
     return () => window.removeEventListener('gemini-key-error', handleError);
   }, []);
 
   const handleSelectKey = async () => {
-    if (window.aistudio) {
-      await window.aistudio.openSelectKey();
-      // Assume success due to potential race condition as instructed
-      setIsKeySelected(true);
+    if ((window as any).aistudio) {
+      try {
+        await (window as any).aistudio.openSelectKey();
+        setIsKeySelected(true);
+      } catch (e) { console.error(e); }
     }
   };
 
   const selectedChild = useMemo(() => 
     children.find(c => c.id === selectedChildId) || children[0] || null
   , [children, selectedChildId]);
-
-  // Handlers
-  const handleOnboardingComplete = (child: Child) => {
-    setChildren([child]);
-    setSelectedChildId(child.id);
-  };
-
-  const handleAddChild = () => {
-    setEditingChild(null);
-    setIsProfileModalOpen(true);
-  };
-
-  const handleEditChild = (child: Child) => {
-    setEditingChild(child);
-    setIsProfileModalOpen(true);
-  };
 
   const handleSaveChild = (child: Child) => {
     if (children.find(c => c.id === child.id)) {
@@ -168,64 +152,38 @@ const App: React.FC = () => {
   };
 
   const handleAddEvent = (event: Omit<ActivityEvent, 'id' | 'timestamp'>) => {
-    const newEvent: ActivityEvent = {
-      ...event,
-      id: Date.now().toString(),
-      timestamp: Date.now()
-    };
+    const newEvent: ActivityEvent = { ...event, id: Date.now().toString(), timestamp: Date.now() };
     setEvents([newEvent, ...events]);
   };
 
-  const handleSetAlarm = (type: SmartAlarm['type'], delayMinutes: number, label: string) => {
-    const newAlarm: SmartAlarm = {
-      id: Date.now().toString(),
-      type,
-      label,
-      time: Date.now() + (delayMinutes * 60000),
-      isActive: true
-    };
+  const handleSetAlarm = (type: SmartAlarm['type'], delay: number, label: string) => {
+    const newAlarm: SmartAlarm = { id: Date.now().toString(), type, label, time: Date.now() + (delay * 60000), isActive: true };
     setAlarms([...alarms, newAlarm]);
   };
 
-  const handleRemoveAlarm = (id: string) => {
-    setAlarms(alarms.filter(a => a.id !== id));
-  };
+  const handleRemoveAlarm = (id: string) => setAlarms(alarms.filter(a => a.id !== id));
 
   if (isKeySelected === false) {
     return (
-      <div className="min-h-screen bg-indigo-600 flex flex-col items-center justify-center p-6 text-white font-['Quicksand']">
-        <div className="bg-white text-slate-800 p-8 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center space-y-6">
-          <div className="text-5xl">🔑</div>
-          <h2 className="text-2xl font-bold">API Key Required</h2>
-          <p className="text-slate-500 font-medium leading-relaxed">
-            To use NurtureAI's intelligence features, you must select an API key from a paid GCP project.
-          </p>
-          <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold block hover:underline">
-            Learn about Billing & API Keys
-          </a>
-          <button 
-            onClick={handleSelectKey}
-            className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg hover:bg-indigo-700 transition-all"
-          >
-            Select API Key
-          </button>
+      <div className="min-h-screen bg-indigo-600 flex flex-col items-center justify-center p-6 text-white">
+        <div className="bg-white text-slate-800 p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center space-y-8 animate-in zoom-in-95 duration-300">
+          <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center mx-auto text-5xl">🔑</div>
+          <h2 className="text-2xl font-black">Connection Required</h2>
+          <button onClick={handleSelectKey} className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl">Select API Key</button>
         </div>
       </div>
     );
   }
 
   if (children.length === 0) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
+    return <Onboarding onComplete={(c) => { setChildren([c]); setSelectedChildId(c.id); }} />;
   }
 
   const renderView = () => {
     if (!selectedChild && activeView !== AppView.SETTINGS) return null;
     switch (activeView) {
       case AppView.DASHBOARD:
-        return <Dashboard 
-          child={selectedChild!} events={events} liveStats={liveStats} growthData={growthData} 
-          waterEntries={waterEntries} foodEntries={foodEntries} onSetAlarm={handleSetAlarm} 
-        />;
+        return <Dashboard child={selectedChild!} events={events} liveStats={liveStats} growthData={growthData} waterEntries={waterEntries} foodEntries={foodEntries} onSetAlarm={handleSetAlarm} />;
       case AppView.MONITOR:
         return <Monitor child={selectedChild!} liveStats={liveStats} onNewEvent={handleAddEvent} />;
       case AppView.TRACKER:
@@ -233,11 +191,7 @@ const App: React.FC = () => {
       case AppView.DIET:
         return <DietTracker child={selectedChild!} entries={foodEntries} onAddEntry={(e) => setFoodEntries([{...e, id: Date.now().toString(), timestamp: Date.now()}, ...foodEntries])} />;
       case AppView.HEALTH:
-        return <HealthLog 
-          child={selectedChild!} vaccines={vaccines} visits={visits} 
-          onAddVaccine={(v) => setVaccines([{...v, id: Date.now().toString()}, ...vaccines])}
-          onAddVisit={(v) => setVisits([{...v, id: Date.now().toString()}, ...visits])}
-        />;
+        return <HealthLog child={selectedChild!} vaccines={vaccines} visits={visits} onAddVaccine={(v) => setVaccines([{...v, id: Date.now().toString()}, ...vaccines])} onAddVisit={(v) => setVisits([{...v, id: Date.now().toString()}, ...visits])} />;
       case AppView.HYDRATION:
         return <HydrationTracker child={selectedChild!} entries={waterEntries} onAddEntry={(e) => setWaterEntries([{...e, id: Date.now().toString(), timestamp: Date.now()}, ...waterEntries])} />;
       case AppView.REMINDERS:
@@ -249,30 +203,30 @@ const App: React.FC = () => {
       case AppView.SETTINGS:
         return <Settings onSelectKey={handleSelectKey} isKeySelected={isKeySelected} />;
       default:
-        return <Dashboard 
-          child={selectedChild!} events={events} liveStats={liveStats} growthData={growthData} 
-          waterEntries={waterEntries} foodEntries={foodEntries} onSetAlarm={handleSetAlarm} 
-        />;
+        return <Dashboard child={selectedChild!} events={events} liveStats={liveStats} growthData={growthData} waterEntries={waterEntries} foodEntries={foodEntries} onSetAlarm={handleSetAlarm} />;
     }
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-['Quicksand']">
-      <Sidebar 
+    <div className="flex h-screen bg-slate-50 overflow-hidden font-['Quicksand'] selection:bg-indigo-100">
+      <TopBar 
         activeView={activeView} 
-        setActiveView={setActiveView} 
-        childrenList={children} 
         selectedChild={selectedChild} 
-        setSelectedChild={(c) => setSelectedChildId(c.id)}
-        onAddChild={handleAddChild}
-        onEditChild={handleEditChild}
+        onProfileClick={() => {
+          setEditingChild(selectedChild);
+          setIsProfileModalOpen(true);
+        }}
       />
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar relative">
-        <div className="max-w-6xl mx-auto">
+      
+      <main className="android-scroll flex-1 px-4 md:px-8">
+        <div className="max-w-xl mx-auto">
           {renderView()}
         </div>
       </main>
-      
+
+      <BottomBar activeView={activeView} setActiveView={setActiveView} />
+
+      {/* Profile/Add Sheet Simulation */}
       <ChildProfileModal 
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
