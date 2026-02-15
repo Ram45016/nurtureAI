@@ -70,6 +70,13 @@ export interface LiveStats {
   isBreathingRegular: boolean;
 }
 
+export interface UserPreferences {
+  haptics: boolean;
+  tempUnit: 'C' | 'F';
+  growthStandard: 'WHO' | 'CDC';
+  smartNotifications: boolean;
+}
+
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   MONITOR = 'MONITOR',

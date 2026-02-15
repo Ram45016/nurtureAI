@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { AppView, Child, ActivityEvent, LiveStats, GrowthData, FoodEntry, Vaccination, DoctorVisit, WaterEntry, SmartAlarm } from './types';
+import { AppView, Child, ActivityEvent, LiveStats, GrowthData, FoodEntry, Vaccination, DoctorVisit, WaterEntry, SmartAlarm, UserPreferences } from './types';
 import Dashboard from './components/Dashboard';
 import Monitor from './components/Monitor';
 import GrowthTracker from './components/GrowthTracker';
@@ -22,6 +22,21 @@ const App: React.FC = () => {
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [isKeySelected, setIsKeySelected] = useState<boolean | null>(null);
   
+  // User Preferences
+  const [prefs, setPrefs] = useState<UserPreferences>(() => {
+    try {
+      const saved = localStorage.getItem('nurture_prefs');
+      return saved ? JSON.parse(saved) : {
+        haptics: true,
+        tempUnit: 'C',
+        growthStandard: 'WHO',
+        smartNotifications: true
+      };
+    } catch {
+      return { haptics: true, tempUnit: 'C', growthStandard: 'WHO', smartNotifications: true };
+    }
+  });
+
   // Data Persistence
   const [children, setChildren] = useState<Child[]>(() => {
     try {
@@ -83,15 +98,8 @@ const App: React.FC = () => {
     } catch { return []; }
   });
 
-  const [liveStats] = useState<LiveStats>({
-    temperature: 24.5,
-    humidity: 45,
-    noiseLevel: 32,
-    heartRate: 115,
-    isBreathingRegular: true
-  });
-
   // Persistence Effects
+  useEffect(() => localStorage.setItem('nurture_prefs', JSON.stringify(prefs)), [prefs]);
   useEffect(() => localStorage.setItem('nurture_children', JSON.stringify(children)), [children]);
   useEffect(() => localStorage.setItem('nurture_selected_child', selectedChildId || ''), [selectedChildId]);
   useEffect(() => localStorage.setItem('nurture_alarms', JSON.stringify(alarms)), [alarms]);
@@ -129,7 +137,9 @@ const App: React.FC = () => {
       try {
         await (window as any).aistudio.openSelectKey();
         setIsKeySelected(true);
-      } catch (e) { console.error(e); }
+      } catch (e) { 
+        console.error("Key selection failed:", e); 
+      }
     }
   };
 
@@ -163,13 +173,32 @@ const App: React.FC = () => {
 
   const handleRemoveAlarm = (id: string) => setAlarms(alarms.filter(a => a.id !== id));
 
+  const handleResetApp = () => {
+    if (window.confirm("CRITICAL ACTION: This will delete all local data, history, and profiles. This cannot be undone. Proceed?")) {
+      localStorage.clear();
+      window.location.reload();
+    }
+  };
+
+  const handleVibrate = (pattern: number | number[] = 10) => {
+    if (prefs.haptics && navigator.vibrate) {
+      navigator.vibrate(pattern);
+    }
+  };
+
   if (isKeySelected === false) {
     return (
       <div className="min-h-screen bg-indigo-600 flex flex-col items-center justify-center p-6 text-white">
         <div className="bg-white text-slate-800 p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center space-y-8 animate-in zoom-in-95 duration-300">
           <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center mx-auto text-5xl">🔑</div>
-          <h2 className="text-2xl font-black">Connection Required</h2>
-          <button onClick={handleSelectKey} className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl">Select API Key</button>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black">Authentication Required</h2>
+            <p className="text-slate-500 text-sm font-bold">To activate the Smart Guardian intelligence, please connect your API Key via the Secure System Dialog.</p>
+          </div>
+          <button onClick={() => { handleVibrate(30); handleSelectKey(); }} className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">Select Secure Key</button>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="underline">Billing Documentation</a>
+          </p>
         </div>
       </div>
     );
@@ -181,29 +210,38 @@ const App: React.FC = () => {
 
   const renderView = () => {
     if (!selectedChild && activeView !== AppView.SETTINGS) return null;
+    const commonProps = { child: selectedChild!, onVibrate: handleVibrate };
+    
     switch (activeView) {
       case AppView.DASHBOARD:
-        return <Dashboard child={selectedChild!} events={events} liveStats={liveStats} growthData={growthData} waterEntries={waterEntries} foodEntries={foodEntries} onSetAlarm={handleSetAlarm} />;
+        return <Dashboard {...commonProps} events={events} liveStats={{ temperature: 24, humidity: 45, noiseLevel: 32, heartRate: 115, isBreathingRegular: true }} growthData={growthData} waterEntries={waterEntries} foodEntries={foodEntries} onSetAlarm={handleSetAlarm} />;
       case AppView.MONITOR:
-        return <Monitor child={selectedChild!} liveStats={liveStats} onNewEvent={handleAddEvent} />;
+        return <Monitor {...commonProps} liveStats={{ temperature: 24, humidity: 45, noiseLevel: 32, heartRate: 115, isBreathingRegular: true }} onNewEvent={handleAddEvent} />;
       case AppView.TRACKER:
-        return <GrowthTracker child={selectedChild!} growthData={growthData} onAddEntry={(e) => setGrowthData([{...e, id: Date.now().toString()}, ...growthData])} />;
+        return <GrowthTracker {...commonProps} growthData={growthData} onAddEntry={(e) => setGrowthData([{...e, id: Date.now().toString()}, ...growthData])} />;
       case AppView.DIET:
-        return <DietTracker child={selectedChild!} entries={foodEntries} onAddEntry={(e) => setFoodEntries([{...e, id: Date.now().toString(), timestamp: Date.now()}, ...foodEntries])} />;
+        return <DietTracker {...commonProps} entries={foodEntries} onAddEntry={(e) => setFoodEntries([{...e, id: Date.now().toString(), timestamp: Date.now()}, ...foodEntries])} />;
       case AppView.HEALTH:
-        return <HealthLog child={selectedChild!} vaccines={vaccines} visits={visits} onAddVaccine={(v) => setVaccines([{...v, id: Date.now().toString()}, ...vaccines])} onAddVisit={(v) => setVisits([{...v, id: Date.now().toString()}, ...visits])} />;
+        return <HealthLog {...commonProps} vaccines={vaccines} visits={visits} onAddVaccine={(v) => setVaccines([{...v, id: Date.now().toString()}, ...vaccines])} onAddVisit={(v) => setVisits([{...v, id: Date.now().toString()}, ...visits])} />;
       case AppView.HYDRATION:
-        return <HydrationTracker child={selectedChild!} entries={waterEntries} onAddEntry={(e) => setWaterEntries([{...e, id: Date.now().toString(), timestamp: Date.now()}, ...waterEntries])} />;
+        return <HydrationTracker {...commonProps} entries={waterEntries} onAddEntry={(e) => setWaterEntries([{...e, id: Date.now().toString(), timestamp: Date.now()}, ...waterEntries])} />;
       case AppView.REMINDERS:
-        return <Reminders child={selectedChild!} alarms={alarms} onSetAlarm={handleSetAlarm} onRemoveAlarm={handleRemoveAlarm} />;
+        return <Reminders {...commonProps} alarms={alarms} onSetAlarm={handleSetAlarm} onRemoveAlarm={handleRemoveAlarm} />;
       case AppView.STORYTIME:
         return <AIStoryTime child={selectedChild!} />;
       case AppView.ASSISTANT:
         return <AIAssistant child={selectedChild!} />;
       case AppView.SETTINGS:
-        return <Settings onSelectKey={handleSelectKey} isKeySelected={isKeySelected} />;
+        return <Settings 
+          onSelectKey={handleSelectKey} 
+          isKeySelected={isKeySelected} 
+          prefs={prefs} 
+          setPrefs={setPrefs}
+          onReset={handleResetApp}
+          onVibrate={handleVibrate}
+        />;
       default:
-        return <Dashboard child={selectedChild!} events={events} liveStats={liveStats} growthData={growthData} waterEntries={waterEntries} foodEntries={foodEntries} onSetAlarm={handleSetAlarm} />;
+        return <Dashboard {...commonProps} events={events} liveStats={{ temperature: 24, humidity: 45, noiseLevel: 32, heartRate: 115, isBreathingRegular: true }} growthData={growthData} waterEntries={waterEntries} foodEntries={foodEntries} onSetAlarm={handleSetAlarm} />;
     }
   };
 
@@ -224,9 +262,8 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <BottomBar activeView={activeView} setActiveView={setActiveView} />
+      <BottomBar activeView={activeView} setActiveView={(v) => { handleVibrate(5); setActiveView(v); }} />
 
-      {/* Profile/Add Sheet Simulation */}
       <ChildProfileModal 
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
