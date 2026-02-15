@@ -2,13 +2,10 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
 /**
- * GEMINI TEXT REASONING ENGINE
- * Optimized for high-fidelity pediatric advice and reasoning.
- * Always creates a new instance right before making an API call to ensure it uses the most up-to-date key from process.env.API_KEY.
+ * GEMINI REASONING ENGINE
  */
 const callGemini = async (prompt: string, model: string = 'gemini-3-flash-preview', systemInstruction: string = "You are a helpful assistant.") => {
   try {
-    // Creating a new instance right before call as per guidelines
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: model,
@@ -20,20 +17,28 @@ const callGemini = async (prompt: string, model: string = 'gemini-3-flash-previe
     });
     return response.text || "";
   } catch (error: any) {
-    console.error("Gemini API Error Detail:", error);
-    
-    // Handle the specific error that requires key re-selection
+    console.error("Gemini API Error:", error);
     if (error.message?.includes("Requested entity was not found")) {
       window.dispatchEvent(new CustomEvent('gemini-key-error'));
-      return "ERROR: There was an issue with your selected API key project. Please select a valid project with billing enabled.";
     }
-
-    if (error.message?.includes("API key not valid")) {
-      return "ERROR: The Gemini API Key is invalid. Please ensure you have selected a valid key.";
-    }
-    
-    return "Connection to Gemini intelligence lost. Check your network or project billing status.";
+    return "Error: Intelligence core unavailable. Please check system connectivity.";
   }
+};
+
+export const generateMealPlan = async (childName: string, ageDisplay: string) => {
+  const prompt = `Generate a 3-day, nutrition-rich meal plan for ${childName} who is ${ageDisplay}.
+  Include breakfast, lunch, dinner, and 2 snacks. 
+  Ensure the food textures and nutrient profiles are developmentally appropriate for this exact age (0-10 years).
+  Format the output as clean Markdown with bold headers for each day.`;
+  
+  return await callGemini(prompt, 'gemini-3-flash-preview', "You are a pediatric nutritionist specialized in child development.");
+};
+
+export const forecastVaccinations = async (childName: string, ageDisplay: string) => {
+  const prompt = `Based on a child named ${childName} who is ${ageDisplay}, provide a list of the NEXT 3 most important vaccinations or health boosters recommended by international health standards (WHO/CDC) for this specific age.
+  Return the information as a concise Markdown list. Include the purpose of each vaccine briefly.`;
+
+  return await callGemini(prompt, 'gemini-3-pro-preview', "You are a specialized pediatric nurse.");
 };
 
 export const analyzeDiet = async (entries: string[], childAge: string) => {
@@ -41,22 +46,11 @@ export const analyzeDiet = async (entries: string[], childAge: string) => {
   return await callGemini(prompt, 'gemini-3-flash-preview', "You are a pediatric nutritionist.");
 };
 
-export const analyzeMood = async (events: any[], childAge: string) => {
-  const eventDescriptions = events.map(e => `${new Date(e.timestamp).toLocaleTimeString()}: ${e.description} (${e.type})`).join('\n');
-  const prompt = `Based on these logs for a ${childAge} child:\n${eventDescriptions}\n\nAnalyze their emotional trend. Provide 2 specific tips. Markdown only.`;
-  return await callGemini(prompt, 'gemini-3-pro-preview', "You are a child psychologist.");
-};
-
 export const generateProactiveRecommendations = async (childName: string, age: string, lastMealTime: string | null, lastWaterTime: string | null, lastSleepTime: string | null) => {
   const prompt = `Child: ${childName}, Age: ${age}. Last Meal: ${lastMealTime || 'None'}. Last Water: ${lastWaterTime || 'None'}. Last Sleep: ${lastSleepTime || 'None'}.
   Provide a short "AI Smart Notification". Keep it under 20 words.`;
 
   return await callGemini(prompt, 'gemini-3-flash-preview', "You are a proactive AI parenting assistant.");
-};
-
-export const analyzeEnvironment = async (temp: number, humidity: number, noise: number, childAge: string) => {
-  const prompt = `Room: Temp: ${temp}°C, Humidity: ${humidity}%, Noise: ${noise}dB. Child Age: ${childAge}. 1 safety recommendation.`;
-  return await callGemini(prompt, 'gemini-3-flash-preview', "You are an expert in infant sleep safety.");
 };
 
 export const summarizeMedicalNote = async (note: string) => {
@@ -95,7 +89,6 @@ export const analyzeAudioBuffer = async (audioBase64: string, mimeType: string =
         }
       }
     });
-    // Use .text property as per guidelines
     return JSON.parse(response.text || '{}');
   } catch (err) {
     console.error("Audio Analysis Error:", err);
@@ -125,7 +118,6 @@ export const generateSmartStory = async (childName: string, theme: string, age: 
     },
   });
   
-  // Iterate through parts to find audio as per guidelines for multi-part responses
   const audioPart = tts.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
   
   return { 
@@ -141,13 +133,10 @@ export const decodeAudio = async (base64: string, ctx: AudioContext) => {
   for (let i = 0; i < len; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
-  
-  // Audio bytes returned by the API is raw PCM data (Int16)
   const dataInt16 = new Int16Array(bytes.buffer);
   const frameCount = dataInt16.length;
   const buffer = ctx.createBuffer(1, frameCount, 24000);
   const channelData = buffer.getChannelData(0);
-  
   for (let i = 0; i < frameCount; i++) {
     channelData[i] = dataInt16[i] / 32768.0;
   }

@@ -1,7 +1,8 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { Child, ActivityEvent, LiveStats } from '../types';
-import { analyzeAudioBuffer, analyzeEnvironment } from '../services/gemini';
+// Removed non-existent export 'analyzeEnvironment'
+import { analyzeAudioBuffer } from '../services/gemini';
 import { calculateAge } from '../utils/age';
 
 interface MonitorProps {
