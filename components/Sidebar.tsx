@@ -47,6 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenLi
     { view: AppView.REMINDERS, label: 'Reminders', icon: '⏰' },
     { view: AppView.STORYTIME, label: 'Storytime', icon: '📚' },
     { view: AppView.ASSISTANT, label: 'AI Support', icon: '✨' },
+    { view: AppView.SETTINGS, label: 'Settings', icon: '⚙️' },
   ];
 
   const handleAction = () => {
@@ -137,13 +138,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, childrenLi
           >
             {isStandalone ? 'Update App' : 'Download APK'}
           </button>
-
-          {isStandalone && (
-            <div className="flex items-center gap-1 mt-2 text-[9px] font-bold text-emerald-600 uppercase tracking-widest justify-center">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-              WebAPK Verified
-            </div>
-          )}
         </div>
       </div>
     </aside>

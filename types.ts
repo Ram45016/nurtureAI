@@ -70,7 +70,6 @@ export interface LiveStats {
   isBreathingRegular: boolean;
 }
 
-// Added HYDRATION to resolve compilation error in Sidebar.tsx
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   MONITOR = 'MONITOR',
@@ -80,5 +79,6 @@ export enum AppView {
   REMINDERS = 'REMINDERS',
   STORYTIME = 'STORYTIME',
   ASSISTANT = 'ASSISTANT',
-  HYDRATION = 'HYDRATION'
+  HYDRATION = 'HYDRATION',
+  SETTINGS = 'SETTINGS'
 }
